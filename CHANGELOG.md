@@ -9,10 +9,9 @@ The format is inspired by Keep a Changelog.
 ### Added
 
 - Initial project structure.
-- Spring Boot backend.
-- Angular frontend.
-- Project documentation.
-- Development roadmap.
+- Angular workspace scaffold.
+- Project documentation and development roadmap.
+- Spec-Driven Development documentation and approved project-foundation SPEC.
 
 ## [0.1.0] - 2026-07-23
 
