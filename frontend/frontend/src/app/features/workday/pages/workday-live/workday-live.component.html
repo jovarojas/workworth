@@ -1,0 +1,60 @@
+<main class="workday-live">
+  <header class="workday-live__header">
+    <p class="eyebrow">JORNADA</p>
+    <h1>Tu jornada en vivo</h1>
+    <p class="subtitle">El estado y el tiempo se actualizan directamente desde WorkWorth.</p>
+  </header>
+
+  @if (loading()) {
+    <section class="feedback" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <p>Cargando la jornada actual…</p>
+    </section>
+  } @else if (error(); as errorMessage) {
+    <section class="feedback feedback--error" role="alert">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>{{ errorMessage }}</p>
+    </section>
+  } @else if (missing()) {
+    <section class="feedback" aria-live="polite">
+      <mat-icon aria-hidden="true">event_busy</mat-icon>
+      <h2>No hay jornada para hoy</h2>
+      <p>WorkWorth no tiene una jornada estándar disponible para esta fecha.</p>
+    </section>
+  } @else if (workday(); as currentWorkday) {
+    <section class="status-panel" [class.status-panel--active]="currentWorkday.status === 'ACTIVE'" [class.status-panel--break]="currentWorkday.status === 'ON_MEAL_BREAK'" aria-labelledby="workday-status">
+      <p class="eyebrow">ESTADO ACTUAL</p>
+      <h2 id="workday-status">{{ statusLabel(currentWorkday.status) }}</h2>
+      <p class="status-panel__detail">
+        @switch (currentWorkday.status) {
+          @case ('SCHEDULED') { La jornada todavía no ha comenzado. }
+          @case ('ACTIVE') { La jornada se encuentra dentro de su horario programado. }
+          @case ('ON_MEAL_BREAK') { La jornada está en pausa. }
+          @case ('COMPLETED') { La jornada ha alcanzado su fin programado. }
+          @case ('CANCELLED') { La jornada se marcó como no trabajada. }
+        }
+      </p>
+      <span class="status-panel__code">{{ currentWorkday.status }}</span>
+    </section>
+
+    <section class="details-grid" aria-label="Detalles de la jornada">
+      <mat-card class="detail-card">
+        <mat-card-content>
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <p class="eyebrow">HORARIO PROGRAMADO</p>
+          <strong>{{ currentWorkday.scheduledStart }} – {{ currentWorkday.scheduledEnd }}</strong>
+          <span>{{ currentWorkday.timeZone }}</span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="detail-card">
+        <mat-card-content>
+          <mat-icon aria-hidden="true">timelapse</mat-icon>
+          <p class="eyebrow">TIEMPO ECONÓMICO</p>
+          <strong>{{ currentWorkday.economicSeconds }} segundos</strong>
+          <span>Máximo programado: {{ currentWorkday.maximumEconomicSeconds }} segundos</span>
+        </mat-card-content>
+      </mat-card>
+    </section>
+  }
+</main>

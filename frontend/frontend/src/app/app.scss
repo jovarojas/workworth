@@ -2,3 +2,58 @@
   display: block;
   min-height: 100dvh;
 }
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(100% - 2rem, 920px);
+  min-height: 4.5rem;
+  margin: 0 auto;
+  gap: 1rem;
+}
+
+.app-nav__brand,
+.app-nav__links a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-nav__brand {
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.app-nav__links {
+  display: flex;
+  gap: .25rem;
+
+  a {
+    border-radius: .65rem;
+    padding: .5rem .7rem;
+    color: #56627a;
+    font-size: .9rem;
+    font-weight: 700;
+
+    &:hover,
+    &:focus-visible {
+      background: #e9ecf5;
+      color: #172033;
+    }
+  }
+}
+
+.app-nav__link--active {
+  background: #e1e6ff;
+  color: #273a8a !important;
+}
+
+@media (max-width: 420px) {
+  .app-nav {
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1rem 0;
+  }
+}

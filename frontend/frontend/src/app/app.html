@@ -1,1 +1,9 @@
+<header class="app-nav" aria-label="Navegación principal">
+  <a class="app-nav__brand" routerLink="/" aria-label="WorkWorth: ir al Dashboard">WORKWORTH</a>
+  <nav class="app-nav__links" aria-label="Secciones principales">
+    <a routerLink="/" routerLinkActive="app-nav__link--active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+    <a routerLink="/workday" routerLinkActive="app-nav__link--active">Jornada</a>
+  </nav>
+</header>
+
 <router-outlet />

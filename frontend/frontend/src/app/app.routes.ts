@@ -6,7 +6,15 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/dashboard/pages/dashboard-page/dashboard-page.component')
         .then((module) => module.DashboardPageComponent),
-    title: 'WorkWorth'
+    title: 'WorkWorth',
+    pathMatch: 'full'
+  },
+  {
+    path: 'workday',
+    loadComponent: () =>
+      import('./features/workday/pages/workday-live/workday-live.component')
+        .then((module) => module.WorkdayLiveComponent),
+    title: 'Jornada | WorkWorth'
   },
   { path: '**', redirectTo: '' }
 ];
