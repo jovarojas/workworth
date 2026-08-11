@@ -1,6 +1,6 @@
 # SPEC 001: Salary Net Estimation
 
-**Status:** Approved  
+**Status:** Implemented
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Business rules](../business-rules.md), [Project requirements](../../PROJECT.md)
 
 ## Objective
@@ -184,4 +184,13 @@ The MVP does not recalculate historical earnings automatically. Any future retro
 
 ## Traceability and verification
 
-This SPEC is approved for documentation and future implementation planning. It authorizes neither fiscal-algorithm code nor backend, frontend, database, migration, configuration, or Git changes. A separate technical proposal and explicit approval are required before implementation.
+Implementation evidence (2026-08-11):
+
+- The `salary` module is implemented as a Spring Boot module with DTO API contracts, service-layer business logic, JPA persistence, Flyway migration, `ProblemDetail` errors, and unit tests.
+- The implementation accepts a real monthly net-income source, derives annual real net income for 12 equal payments, preserves month-effective salary profiles, and leaves the fiscal-estimation source unavailable until an approved fiscal rule-set exists.
+- `MonthlySalaryRateService` consumes the `StandardEconomicHoursProvider` contract. Its endpoint correctly remains unavailable until SPEC 002 provides the standard-calendar implementation.
+- PostgreSQL 16 Testcontainers execution validated Flyway migration `V1__create_salary_profiles.sql`, JPA schema validation, repository persistence, and the salary-profile controller contract.
+- `SalaryProfileRepositoryIntegrationTest` and `SalaryProfileControllerIntegrationTest` passed, and the complete backend test suite passed with 8 tests, 0 failures, 0 errors, and 0 skipped tests.
+- During this verification, the Flyway migration was corrected to align PostgreSQL types with JPA mappings: currency and country codes use `VARCHAR`, while `pay_periods` and `fiscal_year` use `INTEGER`.
+
+This SPEC is **Implemented**. It is not yet **Verified**: full end-to-end confirmation of monthly-rate availability requires the `StandardEconomicHoursProvider` implementation assigned to SPEC 002. The fiscal algorithm remains intentionally unimplemented and unavailable, as approved for the MVP. No frontend, Git, remote, or commit changes are authorized by this status update.
