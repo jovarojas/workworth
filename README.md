@@ -128,7 +128,19 @@ WorkWorth/
 cd backend
 ```
 
-Run
+Start the local PostgreSQL infrastructure first from the repository root:
+
+```bash
+docker compose up -d
+```
+
+Check that it is ready:
+
+```bash
+docker compose ps
+```
+
+Then run Spring Boot:
 
 ```bash
 mvn spring-boot:run
@@ -151,7 +163,7 @@ npm install
 Run
 
 ```bash
-ng serve
+npm start
 ```
 
 Angular runs at
@@ -170,18 +182,35 @@ http://localhost:8080
 
 # 🗄 Database
 
-PostgreSQL
+Local development uses PostgreSQL through [`docker-compose.yml`](docker-compose.yml):
 
-Create a database named
+| Setting | Local value |
+|---|---|
+| Host / port | `localhost:5432` |
+| Database | `workworth` |
+| Username | `workworth` |
+| Password | `workworth-local-dev` |
 
+Spring Boot uses [`backend/src/main/resources/application.yml`](backend/src/main/resources/application.yml) and the `local` profile in [`backend/src/main/resources/application-local.yml`](backend/src/main/resources/application-local.yml). Flyway runs automatically against this local database and applies the project migrations.
+
+The following optional environment variables override the local defaults:
+
+| Variable | Default |
+|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/workworth` |
+| `DB_USERNAME` | `workworth` |
+| `DB_PASSWORD` | `workworth-local-dev` for the `local` profile |
+
+Stop PostgreSQL while preserving its data:
+
+```bash
+docker compose down
 ```
-workworth
-```
 
-Configure credentials in
+Remove the local volume and start with an empty database on the next `docker compose up -d`:
 
-```
-application.properties
+```bash
+docker compose down -v
 ```
 
 ---

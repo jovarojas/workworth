@@ -1,3 +1,5 @@
 spring:
+  datasource:
+    password: ${DB_PASSWORD:workworth-local-dev}
   jpa:
     show-sql: true
