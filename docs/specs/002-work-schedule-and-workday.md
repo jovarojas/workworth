@@ -1,6 +1,6 @@
 # SPEC 002: Work Schedule and Workday
 
-**Status:** Implemented
+**Status:** Verified
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Salary net estimation](001-salary-net-estimation.md), [Business rules](../business-rules.md)
 
 ## Objective
@@ -219,4 +219,11 @@ Implementation evidence (2026-08-11):
 - The implementation uses injected `Clock`, `Europe/Madrid` configuration, zone-aware instants, idempotent local-date reconciliation, and automatic closure of open meal breaks at scheduled end.
 - PostgreSQL 16 Testcontainers validates Flyway V1/V2 from a clean database and the workday persistence model. The full backend suite passed with 11 tests, 0 failures, 0 errors, and 0 skipped tests; `mvn package` also passed.
 
-This SPEC is **Implemented**. It is not yet **Verified**: final verification should include a criterion-by-criterion review and broader API/lifecycle regression coverage before its status advances.
+Verification evidence (2026-08-11):
+
+- `WorkdayServiceTest` verifies idempotent reconciliation, scheduled/active/completed/cancelled lifecycle paths, automatic meal-break closure, absence modification, and rejection of meal-break/meal-break, absence/absence, and meal-break/absence overlaps.
+- `WorkdayScheduleTest` and `StandardEconomicHoursServiceTest` verify normal, July/August, weekend, leap-year, and varying monthly-calendar behavior without duplicating salary rules.
+- `WorkdayRepositoryIntegrationTest` verifies PostgreSQL/Testcontainers persistence; the complete backend suite applies Flyway V1/V2 from clean PostgreSQL containers.
+- The full backend suite passed with 15 tests, 0 failures, 0 errors, and 0 skipped tests. `mvn package` and `git diff --check` passed.
+
+This SPEC is **Verified**. No earnings, monetary aggregation, rewards, goals, statistics, Dashboard, Angular, or SPEC 003 functionality was added.
