@@ -3,3 +3,6 @@ spring:
     password: ${DB_PASSWORD:workworth-local-dev}
   jpa:
     show-sql: true
+
+server:
+  port: ${SERVER_PORT:8081}
