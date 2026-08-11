@@ -51,8 +51,11 @@ public class MonthlySalaryRateService {
 
         return new MonthlySalaryRate(
                 month,
+                profile.getId(),
                 IncomeSource.NET_MONTHLY_REAL,
                 profile.getNetMonthlyReal(),
+                profile.getNetMonthlyReal().multiply(BigDecimal.valueOf(profile.getPayPeriods())),
+                profile.getPayPeriods(),
                 standardHours,
                 hourlyRate,
                 profile.getCurrencyCode());
