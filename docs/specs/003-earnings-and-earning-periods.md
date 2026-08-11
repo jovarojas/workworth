@@ -1,6 +1,6 @@
 # SPEC 003: Earnings and Earning Periods
 
-**Status:** Approved
+**Status:** Verified
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Salary net estimation](001-salary-net-estimation.md), [Work schedule and workday](002-work-schedule-and-workday.md), [Business rules](../business-rules.md), [Project requirements](../../PROJECT.md), [Architecture decisions](../../DECISIONS.md)
 
 ## Objective
@@ -79,7 +79,7 @@ When the workday closes, WorkWorth materializes one immutable base earning. It u
 
 ### Historical corrections
 
-SPEC 002 permits a completed workday to be cancelled and permits later changes to eligible meal-break or partial-absence intervals. When one of those changes affects a materialized earning, WorkWorth appends an immutable correction record.
+SPEC 002 permits a completed workday to be cancelled and permits later changes to eligible meal-break or partial-absence intervals. For a meal break, this is specifically an atomic replacement of the two boundaries of a closed break on a `COMPLETED` workday. When one of those changes affects a materialized earning, WorkWorth appends an immutable correction record.
 
 Allowed MVP correction causes are:
 
@@ -172,6 +172,12 @@ An eligible historical correction changes the effective earning for the correcte
 **When** a valid partial absence is recorded or changed later<br>
 **Then** WorkWorth appends a `PARTIAL_ABSENCE_CHANGED` correction preserving previous and new values.
 
+### Correct an amended historical meal break
+
+**Given** SPEC 002 accepts a valid amendment to a closed meal break on a completed workday with a materialized earning<br>
+**When** SPEC 002 persists `MEAL_BREAK_CHANGED` and publishes `WorkdayTimeCorrectionRegisteredEvent`<br>
+**Then** earnings consumes that workday-only fact and appends one immutable `MEAL_BREAK_CHANGED` monetary correction using the base earning's original salary snapshot.
+
 ### Aggregate a week crossing a month
 
 **Given** the current ISO week contains local dates from two calendar months<br>
@@ -190,6 +196,7 @@ An eligible historical correction changes the effective earning for the correcte
 - [ ] Effective earnings use the latest valid correction, and period totals use effective earnings.
 - [ ] Corrections retain previous/new amount and economic time, cause, correction instant, and references to the base/prior revision.
 - [ ] Cancellation, partial-absence change, and meal-break change are the only MVP correction causes.
+- [ ] A `MEAL_BREAK_CHANGED` time correction published by SPEC 002 creates exactly one immutable monetary revision using the base earning's frozen hourly-rate snapshot; earnings does not validate or calculate the meal-break interval itself.
 - [ ] Normal and summer workday limits affect earnings only through the economic time supplied by SPEC 002.
 - [ ] Internal amounts retain scale 12; public individual and aggregated amounts are rounded once to two decimals with `HALF_UP`.
 - [ ] `TODAY`, `WEEK`, `MONTH`, and `ALL_TIME` have the stated local-date semantics.
@@ -238,6 +245,7 @@ An eligible historical correction changes the effective earning for the correcte
 | Daily limits | Unit | Extra time cannot increase an earning beyond SPEC 002 economic time. |
 | Corrections | Unit | A correction preserves old/new time and amount and points to the base/prior revision. |
 | Correction causes | Unit | Only the three approved MVP correction causes are accepted. |
+| Meal-break correction integration | Integration | A valid historical meal-break amendment enters through SPEC 002, produces one `MEAL_BREAK_CHANGED` time correction, and produces one earnings revision from the original salary snapshot. |
 | Effective earning | Unit | The latest valid correction is used instead of base or older correction. |
 | Precision | Unit | Period totals sum internal values first and round once with `HALF_UP`. |
 | Today | Unit | Local-day boundaries and effective-earning inclusion are correct. |
@@ -251,4 +259,12 @@ An eligible historical correction changes the effective earning for the correcte
 
 ## Traceability and verification
 
-This specification is approved as the functional source of truth for net earnings and earning-period aggregation. It authorizes neither implementation nor migrations, configuration, Angular, Git, branch, remote, or commit changes. A separately approved technical implementation proposal is required before implementation.
+Verification evidence (2026-08-11):
+
+- A completed workday materializes exactly one immutable base earning through a workday-owned completion event. Active projections remain ephemeral and do not persist earnings or corrections.
+- Available earnings preserve the salary snapshot and calculate internal amounts at scale 12. `UNAVAILABLE` earnings preserve a stable unavailable reason and never fall back to gross salary or another month’s rate.
+- Immutable, ordered corrections retain previous/new amounts and economic seconds, a predecessor reference, and the original snapshot hourly rate. `WORKDAY_CANCELLED`, `PARTIAL_ABSENCE_CHANGED`, and `MEAL_BREAK_CHANGED` are exercised through the real workday event flow.
+- PostgreSQL 16 Testcontainers validates Flyway migrations V1–V7 from clean databases, persistence of the snapshots and corrections, and the REST API’s DTO and `ProblemDetail` contracts.
+- The complete backend suite passed with 29 tests, 0 failures, 0 errors, and 0 skipped tests. `mvn package` and `git diff --check` passed.
+
+This SPEC is **Verified**. No Angular, rewards, goals, statistics, Dashboard, authentication, or fiscal-estimator functionality was introduced.
