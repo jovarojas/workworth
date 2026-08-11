@@ -1,6 +1,6 @@
 # SPEC 002: Work Schedule and Workday
 
-**Status:** Approved
+**Status:** Implemented
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Salary net estimation](001-salary-net-estimation.md), [Business rules](../business-rules.md)
 
 ## Objective
@@ -212,4 +212,11 @@ SPEC 002 supplies `standardEconomicHoursInMonth`; it does not perform this monet
 
 ## Traceability and verification
 
-This specification is approved as the functional source of truth for the workday calendar and economically computable time. It authorizes neither implementation nor migration, configuration, Angular, Git, or commit changes. A separately approved technical implementation proposal is required before implementation.
+Implementation evidence (2026-08-11):
+
+- The `workday` module implements the normal and July/August economic calendars, workday persistence, Flyway migration `V2__create_workday_tracking.sql`, lifecycle reconciliation, meal breaks, partial absences, cancellation, and immutable economic-time correction records.
+- `StandardEconomicHoursService` implements the salary module's `StandardEconomicHoursProvider` contract without calculating money.
+- The implementation uses injected `Clock`, `Europe/Madrid` configuration, zone-aware instants, idempotent local-date reconciliation, and automatic closure of open meal breaks at scheduled end.
+- PostgreSQL 16 Testcontainers validates Flyway V1/V2 from a clean database and the workday persistence model. The full backend suite passed with 11 tests, 0 failures, 0 errors, and 0 skipped tests; `mvn package` also passed.
+
+This SPEC is **Implemented**. It is not yet **Verified**: final verification should include a criterion-by-criterion review and broader API/lifecycle regression coverage before its status advances.
