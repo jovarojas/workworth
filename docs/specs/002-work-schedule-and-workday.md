@@ -223,7 +223,7 @@ Verification evidence (2026-08-11):
 
 - `WorkdayServiceTest` verifies idempotent reconciliation, scheduled/active/completed/cancelled lifecycle paths, automatic meal-break closure, absence modification, and rejection of meal-break/meal-break, absence/absence, and meal-break/absence overlaps.
 - `WorkdayScheduleTest` and `StandardEconomicHoursServiceTest` verify normal, July/August, weekend, leap-year, and varying monthly-calendar behavior without duplicating salary rules.
-- `WorkdayRepositoryIntegrationTest` verifies PostgreSQL/Testcontainers persistence; the complete backend suite applies Flyway V1/V2 from clean PostgreSQL containers.
+- `WorkdayRepositoryIntegrationTest` verifies PostgreSQL/Testcontainers persistence and `WorkdayControllerIntegrationTest` verifies an HTTP `ProblemDetail` response; the complete backend suite applies Flyway V1/V2 from clean PostgreSQL containers.
 - The full backend suite passed with 15 tests, 0 failures, 0 errors, and 0 skipped tests. `mvn package` and `git diff --check` passed.
 
 This SPEC is **Verified**. No earnings, monetary aggregation, rewards, goals, statistics, Dashboard, Angular, or SPEC 003 functionality was added.
