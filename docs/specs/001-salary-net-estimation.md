@@ -1,6 +1,6 @@
 # SPEC 001: Salary Net Estimation
 
-**Status:** Implemented
+**Status:** Verified
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Business rules](../business-rules.md), [Project requirements](../../PROJECT.md)
 
 ## Objective
@@ -188,9 +188,10 @@ Implementation evidence (2026-08-11):
 
 - The `salary` module is implemented as a Spring Boot module with DTO API contracts, service-layer business logic, JPA persistence, Flyway migration, `ProblemDetail` errors, and unit tests.
 - The implementation accepts a real monthly net-income source, derives annual real net income for 12 equal payments, preserves month-effective salary profiles, and leaves the fiscal-estimation source unavailable until an approved fiscal rule-set exists.
-- `MonthlySalaryRateService` consumes the `StandardEconomicHoursProvider` contract. Its endpoint correctly remains unavailable until SPEC 002 provides the standard-calendar implementation.
-- PostgreSQL 16 Testcontainers execution validated Flyway migration `V1__create_salary_profiles.sql`, JPA schema validation, repository persistence, and the salary-profile controller contract.
-- `SalaryProfileRepositoryIntegrationTest` and `SalaryProfileControllerIntegrationTest` passed, and the complete backend test suite passed with 8 tests, 0 failures, 0 errors, and 0 skipped tests.
+- `StandardEconomicHoursProvider` is implemented by the workday module in SPEC 002. `MonthlySalaryRateService` now consumes the configured monthly economic hours to expose the monthly rate.
+- SPEC 003 verifies the salary → workday → earnings path: earnings retain the salary basis snapshot and use the monthly rate without falling back to gross salary.
+- PostgreSQL 16 Testcontainers validates Flyway migrations V1–V7 from clean databases, including salary-profile persistence and the downstream earnings snapshot integration.
+- The complete backend suite passed with 29 tests, 0 failures, 0 errors, and 0 skipped tests; `mvn package` and `git diff --check` passed.
 - During this verification, the Flyway migration was corrected to align PostgreSQL types with JPA mappings: currency and country codes use `VARCHAR`, while `pay_periods` and `fiscal_year` use `INTEGER`.
 
-This SPEC is **Implemented**. It is not yet **Verified**: full end-to-end confirmation of monthly-rate availability requires the `StandardEconomicHoursProvider` implementation assigned to SPEC 002. The fiscal algorithm remains intentionally unimplemented and unavailable, as approved for the MVP. No frontend, Git, remote, or commit changes are authorized by this status update.
+This SPEC is **Verified**. The fiscal algorithm remains intentionally unimplemented and unavailable, as approved for the MVP; real monthly net income remains the verified source of truth. No functional salary rules are changed by this verification update.
