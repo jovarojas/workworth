@@ -14,4 +14,5 @@ public class MealBreak {
     protected MealBreak() { }
     public MealBreak(Workday workday, Instant startedAt) { this.workday=workday; this.startedAt=startedAt; }
     public void end(Instant endedAt, boolean automatic) { this.endedAt=endedAt; this.endedAutomatically=automatic; }
+    public void amend(Instant startedAt, Instant endedAt) { this.startedAt=startedAt; this.endedAt=endedAt; this.endedAutomatically=false; }
 }
