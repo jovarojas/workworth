@@ -5,64 +5,104 @@
     <p class="subtitle">Sigue lo que estás construyendo con tu tiempo.</p>
   </header>
 
-  @if (loading()) {
-    <section class="feedback" aria-live="polite">
-      <mat-spinner diameter="36" />
-      <p>Cargando tu jornada y ganancias…</p>
-    </section>
-  } @else if (error(); as errorMessage) {
-    <section class="feedback feedback--error" role="alert">
-      <mat-icon aria-hidden="true">cloud_off</mat-icon>
-      <p>{{ errorMessage }}</p>
-    </section>
-  } @else if (data(); as dashboard) {
-    <section class="hero" aria-labelledby="today-earning">
-      <p class="eyebrow">GANANCIA ACTUAL DE HOY</p>
+  <section class="hero" aria-labelledby="today-earning">
+    <p class="eyebrow">GANANCIA ACTUAL DE HOY</p>
+    @if (projectionLoading()) {
+      <div class="hero__loading" aria-live="polite">
+        <mat-spinner diameter="32" />
+        <span>Cargando la ganancia de hoy…</span>
+      </div>
+    } @else if (projectionError(); as errorMessage) {
+      <div class="hero__feedback" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p>{{ errorMessage }}</p>
+      </div>
+    } @else if (projection(); as currentProjection) {
       @if (isUnavailable()) {
         <h2 id="today-earning">No disponible</h2>
         <p class="hero__detail">
-          {{ dashboard.projection.unavailableReason || 'Falta una tarifa salarial válida para hoy.' }}
+          {{ currentProjection.unavailableReason || 'No existe una tarifa salarial válida para hoy.' }}
         </p>
       } @else {
         <h2 id="today-earning">
-          {{ dashboard.projection.amount | currency:(dashboard.projection.currencyCode || 'EUR'):'symbol':'1.2-2' }}
+          {{ currentProjection.amount | currency:(currentProjection.currencyCode || 'EUR'):'symbol':'1.2-2' }}
         </h2>
-        <p class="hero__detail">Ganancia neta generada durante tu jornada de hoy.</p>
+        <p class="hero__detail">Ganancia neta proporcionada por WorkWorth para la jornada de hoy.</p>
       }
-    </section>
+    }
+  </section>
 
-    <section class="summary-grid" aria-label="Resumen de ganancias">
-      <mat-card class="summary-card">
-        <mat-card-content>
-          <p>Esta semana</p>
-          <strong>{{ dashboard.week.amount | currency:dashboard.week.currencyCode:'symbol':'1.2-2' }}</strong>
-        </mat-card-content>
-      </mat-card>
-      <mat-card class="summary-card">
-        <mat-card-content>
-          <p>Este mes</p>
-          <strong>{{ dashboard.month.amount | currency:dashboard.month.currencyCode:'symbol':'1.2-2' }}</strong>
-        </mat-card-content>
-      </mat-card>
-    </section>
-
+  <section class="workday-section" aria-labelledby="workday-heading">
     <mat-card class="workday-card">
       <mat-card-content>
         <div class="workday-card__heading">
           <div>
-            <p class="eyebrow">JORNADA DE HOY</p>
-            <h2>{{ workdayStatusLabel(dashboard.workday.status) }}</h2>
+            <p class="eyebrow">JORNADA ACTUAL</p>
+            @if (workdayLoading()) {
+              <h2 id="workday-heading">Cargando jornada…</h2>
+            } @else if (workday(); as currentWorkday) {
+              <h2 id="workday-heading">{{ workdayStatusLabel(currentWorkday.status) }}</h2>
+            } @else if (workdayMissing()) {
+              <h2 id="workday-heading">No hay jornada para hoy</h2>
+            } @else {
+              <h2 id="workday-heading">Jornada no disponible</h2>
+            }
           </div>
-          <span class="status" [class.status--active]="dashboard.workday.status === 'ACTIVE'">
-            {{ dashboard.workday.status }}
-          </span>
+
+          @if (workday(); as currentWorkday) {
+            <span class="status" [class.status--active]="currentWorkday.status === 'ACTIVE'" [class.status--break]="currentWorkday.status === 'ON_MEAL_BREAK'">
+              {{ currentWorkday.status }}
+            </span>
+          }
         </div>
-        <div class="schedule">
-          <mat-icon aria-hidden="true">schedule</mat-icon>
-          <span>{{ dashboard.workday.scheduledStart }} – {{ dashboard.workday.scheduledEnd }}</span>
-          <span class="schedule__zone">{{ dashboard.workday.timeZone }}</span>
-        </div>
+
+        @if (workdayError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (workday(); as currentWorkday) {
+          <div class="schedule">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <div>
+              <span class="schedule__time">{{ currentWorkday.scheduledStart }} – {{ currentWorkday.scheduledEnd }}</span>
+              <span class="schedule__zone">{{ currentWorkday.timeZone }}</span>
+            </div>
+          </div>
+          <p class="workday-card__detail">
+            Tiempo económico registrado: {{ currentWorkday.economicSeconds }} segundos.
+          </p>
+        } @else if (workdayMissing()) {
+          <p class="workday-card__detail">Cuando exista una jornada programada, aparecerá aquí.</p>
+        }
       </mat-card-content>
     </mat-card>
-  }
+  </section>
+
+  <section class="summary-grid" aria-label="Resumen de ganancias">
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <p class="eyebrow">SEMANA</p>
+        @if (weekLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (weekError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (week(); as weekSummary) {
+          <strong>{{ weekSummary.amount | currency:weekSummary.currencyCode:'symbol':'1.2-2' }}</strong>
+          <span class="summary-card__detail">Resumen semanal</span>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <p class="eyebrow">MES</p>
+        @if (monthLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (monthError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (month(); as monthSummary) {
+          <strong>{{ monthSummary.amount | currency:monthSummary.currencyCode:'symbol':'1.2-2' }}</strong>
+          <span class="summary-card__detail">Resumen mensual</span>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
 </main>

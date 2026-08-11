@@ -1,26 +1,14 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { forkJoin, Subscription, timer } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { HttpErrorResponse } from '@angular/common/http';
+import { finalize, Subscription, timer } from 'rxjs';
+import { EarningPeriodResponse, EarningProjectionResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
 import { WorkdayApiService } from '../../../../core/services/workday-api.service';
-import {
-  EarningPeriodResponse,
-  EarningProjectionResponse,
-  WorkdayResponse,
-  WorkdayStatus
-} from '../../../../core/models/workworth-api.models';
-
-interface DashboardData {
-  projection: EarningProjectionResponse;
-  week: EarningPeriodResponse;
-  month: EarningPeriodResponse;
-  workday: WorkdayResponse;
-}
 
 @Component({
   selector: 'app-dashboard-page',
@@ -34,40 +22,33 @@ export class DashboardPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private pollingSubscription?: Subscription;
 
-  readonly data = signal<DashboardData | null>(null);
-  readonly loading = signal(true);
-  readonly error = signal<string | null>(null);
-  readonly isUnavailable = computed(() => this.data()?.projection.status === 'UNAVAILABLE');
+  readonly projection = signal<EarningProjectionResponse | null>(null);
+  readonly week = signal<EarningPeriodResponse | null>(null);
+  readonly month = signal<EarningPeriodResponse | null>(null);
+  readonly workday = signal<WorkdayResponse | null>(null);
+
+  readonly projectionLoading = signal(true);
+  readonly weekLoading = signal(true);
+  readonly monthLoading = signal(true);
+  readonly workdayLoading = signal(true);
+
+  readonly projectionError = signal<string | null>(null);
+  readonly weekError = signal<string | null>(null);
+  readonly monthError = signal<string | null>(null);
+  readonly workdayError = signal<string | null>(null);
+  readonly workdayMissing = signal(false);
+
+  readonly isUnavailable = computed(() => this.projection()?.status === 'UNAVAILABLE');
 
   ngOnInit(): void {
     this.load();
   }
 
   load(showLoading = true): void {
-    if (showLoading) {
-      this.loading.set(true);
-    }
-    this.error.set(null);
-
-    forkJoin({
-      projection: this.earnings.currentProjection(),
-      week: this.earnings.period('WEEK'),
-      month: this.earnings.period('MONTH'),
-      workday: this.workdays.current()
-    })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (data) => {
-          this.data.set(data);
-          this.loading.set(false);
-          this.configurePolling(data.workday.status);
-        },
-        error: (error: unknown) => {
-          this.loading.set(false);
-          this.stopPolling();
-          this.error.set(this.errorMessage(error));
-        }
-      });
+    this.loadProjection(showLoading);
+    this.loadPeriod('WEEK', showLoading);
+    this.loadPeriod('MONTH', showLoading);
+    this.loadWorkday(showLoading);
   }
 
   workdayStatusLabel(status: WorkdayStatus): string {
@@ -78,6 +59,74 @@ export class DashboardPageComponent implements OnInit {
       COMPLETED: 'Finalizada',
       CANCELLED: 'Cancelada'
     }[status];
+  }
+
+  private loadProjection(showLoading: boolean): void {
+    if (showLoading) {
+      this.projectionLoading.set(true);
+    }
+    this.projectionError.set(null);
+
+    this.earnings.currentProjection()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.projectionLoading.set(false))
+      )
+      .subscribe({
+        next: (projection) => this.projection.set(projection),
+        error: (error: unknown) => this.projectionError.set(this.errorMessage(error, 'la ganancia de hoy'))
+      });
+  }
+
+  private loadPeriod(context: 'WEEK' | 'MONTH', showLoading: boolean): void {
+    const loading = context === 'WEEK' ? this.weekLoading : this.monthLoading;
+    const response = context === 'WEEK' ? this.week : this.month;
+    const errorState = context === 'WEEK' ? this.weekError : this.monthError;
+    const label = context === 'WEEK' ? 'el resumen semanal' : 'el resumen mensual';
+
+    if (showLoading) {
+      loading.set(true);
+    }
+    errorState.set(null);
+
+    this.earnings.period(context)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => loading.set(false))
+      )
+      .subscribe({
+        next: (period) => response.set(period),
+        error: (error: unknown) => errorState.set(this.errorMessage(error, label))
+      });
+  }
+
+  private loadWorkday(showLoading: boolean): void {
+    if (showLoading) {
+      this.workdayLoading.set(true);
+    }
+    this.workdayError.set(null);
+    this.workdayMissing.set(false);
+
+    this.workdays.current()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.workdayLoading.set(false))
+      )
+      .subscribe({
+        next: (workday) => {
+          this.workday.set(workday);
+          this.configurePolling(workday.status);
+        },
+        error: (error: unknown) => {
+          this.workday.set(null);
+          this.stopPolling();
+          if (error instanceof HttpErrorResponse && error.status === 404) {
+            this.workdayMissing.set(true);
+            return;
+          }
+          this.workdayError.set(this.errorMessage(error, 'la jornada de hoy'));
+        }
+      });
   }
 
   private configurePolling(status: WorkdayStatus): void {
@@ -100,15 +149,10 @@ export class DashboardPageComponent implements OnInit {
     this.pollingSubscription = undefined;
   }
 
-  private errorMessage(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      if (error.status === 0) {
-        return 'No se puede conectar con WorkWorth. Comprueba que el backend está en ejecución.';
-      }
-      if (error.status === 404) {
-        return 'No hay una jornada disponible para hoy.';
-      }
+  private errorMessage(error: unknown, resource: string): string {
+    if (error instanceof HttpErrorResponse && error.status === 0) {
+      return `No se puede conectar con WorkWorth para cargar ${resource}.`;
     }
-    return 'No se ha podido cargar el Dashboard. Inténtalo de nuevo más tarde.';
+    return `No se ha podido cargar ${resource}. Inténtalo de nuevo más tarde.`;
   }
 }
