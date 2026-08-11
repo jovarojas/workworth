@@ -1,0 +1,9 @@
+package com.workworth.common.exception;
+
+public enum ApiErrorCode {
+    VALIDATION_ERROR,
+    RESOURCE_NOT_FOUND,
+    SALARY_PROFILE_CONFLICT,
+    SALARY_RATE_UNAVAILABLE,
+    SALARY_CONFIGURATION_INCOMPLETE
+}

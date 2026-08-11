@@ -417,3 +417,41 @@ If requirements are ambiguous:
 Do not invent business rules.
 
 Instead, clearly identify what is missing and request clarification.
+
+# Development Workflow
+
+Before implementing any feature:
+
+1. Read the relevant documentation.
+2. Search for existing implementations.
+3. Reuse existing code whenever possible.
+4. Keep changes focused on a single task.
+
+After implementing a feature:
+
+1. Review your own code.
+2. Remove duplicated logic.
+3. Verify consistency with the project architecture.
+4. Explain the implementation before considering the task complete.
+
+---
+
+# Spec-Driven Development
+
+WorkWorth follows the process defined in [docs/specs/README.md](docs/specs/README.md):
+
+SPEC → technical proposal → explicit approval → implementation → tests and compilation → verification against the SPEC.
+
+Before every implementation task, provide the proposed scope, affected files, relevant architectural or business decisions, and request explicit approval. Do not create or modify implementation files before that approval.
+
+An approval covers the full approved task scope and reasonable related corrections, but not a new feature or a materially expanded scope.
+
+Every important feature requires a SPEC based on [docs/specs/TEMPLATE.md](docs/specs/TEMPLATE.md). Requirements, acceptance criteria, and expected tests must be verified before marking the work complete.
+
+# Additional Architectural Constraints
+
+The backend is a modular monolith. Organize code by business capability while preserving Controller → Service → Repository within each module.
+
+Use DTOs for every API contract. Do not expose JPA entities. Use Spring `ProblemDetail` for API errors unless an approved architectural decision records a justified exception.
+
+Use `BigDecimal` for money, ISO currency codes, and explicit rounding. Inject `java.time.Clock` whenever current time affects business logic. Use Flyway for database migrations, Spring profiles and environment variables for configuration, automated service tests from the beginning, and Testcontainers PostgreSQL integration tests when persistence is introduced.
