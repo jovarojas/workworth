@@ -1,0 +1,1 @@
+package com.workworth.earnings.persistence; import java.util.Optional; import org.springframework.data.jpa.repository.JpaRepository; public interface WorkdayEarningRepository extends JpaRepository<WorkdayEarning,Long>{Optional<WorkdayEarning> findByWorkdayId(Long id);}
