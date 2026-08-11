@@ -4,6 +4,9 @@ import com.workworth.salary.exception.SalaryConfigurationIncompleteException;
 import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.exception.SalaryProfileNotFoundException;
 import com.workworth.salary.exception.SalaryRateUnavailableException;
+import com.workworth.workday.exception.WorkdayConflictException;
+import com.workworth.workday.exception.WorkdayIntervalValidationException;
+import com.workworth.workday.exception.WorkdayNotFoundException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -48,6 +51,9 @@ public class GlobalExceptionHandler {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.SALARY_CONFIGURATION_INCOMPLETE,
                 exception.getMessage());
     }
+    @ExceptionHandler(WorkdayNotFoundException.class) ProblemDetail handleWorkdayNotFound(WorkdayNotFoundException e) { return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage()); }
+    @ExceptionHandler(WorkdayConflictException.class) ProblemDetail handleWorkdayConflict(WorkdayConflictException e) { return problem(HttpStatus.CONFLICT, ApiErrorCode.WORKDAY_CONFLICT, e.getMessage()); }
+    @ExceptionHandler(WorkdayIntervalValidationException.class) ProblemDetail handleWorkdayInterval(WorkdayIntervalValidationException e) { return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.WORKDAY_INTERVAL_INVALID, e.getMessage()); }
 
     private ProblemDetail problem(HttpStatus status, ApiErrorCode code, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
