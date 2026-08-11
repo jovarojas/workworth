@@ -1,0 +1,68 @@
+<main class="dashboard">
+  <header class="dashboard__header">
+    <p class="eyebrow">WORKWORTH</p>
+    <h1>Tu trabajo, en valor real.</h1>
+    <p class="subtitle">Sigue lo que estás construyendo con tu tiempo.</p>
+  </header>
+
+  @if (loading()) {
+    <section class="feedback" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <p>Cargando tu jornada y ganancias…</p>
+    </section>
+  } @else if (error(); as errorMessage) {
+    <section class="feedback feedback--error" role="alert">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>{{ errorMessage }}</p>
+    </section>
+  } @else if (data(); as dashboard) {
+    <section class="hero" aria-labelledby="today-earning">
+      <p class="eyebrow">GANANCIA ACTUAL DE HOY</p>
+      @if (isUnavailable()) {
+        <h2 id="today-earning">No disponible</h2>
+        <p class="hero__detail">
+          {{ dashboard.projection.unavailableReason || 'Falta una tarifa salarial válida para hoy.' }}
+        </p>
+      } @else {
+        <h2 id="today-earning">
+          {{ dashboard.projection.amount | currency:(dashboard.projection.currencyCode || 'EUR'):'symbol':'1.2-2' }}
+        </h2>
+        <p class="hero__detail">Ganancia neta generada durante tu jornada de hoy.</p>
+      }
+    </section>
+
+    <section class="summary-grid" aria-label="Resumen de ganancias">
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <p>Esta semana</p>
+          <strong>{{ dashboard.week.amount | currency:dashboard.week.currencyCode:'symbol':'1.2-2' }}</strong>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="summary-card">
+        <mat-card-content>
+          <p>Este mes</p>
+          <strong>{{ dashboard.month.amount | currency:dashboard.month.currencyCode:'symbol':'1.2-2' }}</strong>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <mat-card class="workday-card">
+      <mat-card-content>
+        <div class="workday-card__heading">
+          <div>
+            <p class="eyebrow">JORNADA DE HOY</p>
+            <h2>{{ workdayStatusLabel(dashboard.workday.status) }}</h2>
+          </div>
+          <span class="status" [class.status--active]="dashboard.workday.status === 'ACTIVE'">
+            {{ dashboard.workday.status }}
+          </span>
+        </div>
+        <div class="schedule">
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <span>{{ dashboard.workday.scheduledStart }} – {{ dashboard.workday.scheduledEnd }}</span>
+          <span class="schedule__zone">{{ dashboard.workday.timeZone }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+</main>
