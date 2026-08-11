@@ -13,6 +13,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -30,6 +31,12 @@ public class GlobalExceptionHandler {
         problem.setProperty("code", ApiErrorCode.VALIDATION_ERROR.name());
         problem.setProperty("fieldErrors", fieldErrors);
         return problem;
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR,
+                "Request parameter has an invalid value.");
     }
 
     @ExceptionHandler(SalaryProfileNotFoundException.class)
