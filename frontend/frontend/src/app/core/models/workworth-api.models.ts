@@ -82,6 +82,35 @@ export interface EarningPeriodResponse {
   currencyCode: string;
 }
 
+export interface EarningResponse {
+  localDate: string;
+  status: EarningStatus;
+  unavailableReason: string | null;
+  amount: number | null;
+  currencyCode: string | null;
+  economicSeconds: number;
+}
+
+export interface EarningHistoryResponse {
+  items: EarningResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export interface EarningCorrectionResponse {
+  sequence: number;
+  cause: 'WORKDAY_CANCELLED' | 'PARTIAL_ABSENCE_CHANGED' | 'MEAL_BREAK_CHANGED';
+  previousEconomicSeconds: number;
+  newEconomicSeconds: number;
+  previousAmount: number | null;
+  newAmount: number | null;
+  correctedAt: string;
+}
+
 export interface MealBreakResponse {
   id: number;
   startedAt: string;

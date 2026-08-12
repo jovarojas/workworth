@@ -46,4 +46,31 @@ describe('EarningsApiService', () => {
       currencyCode: 'EUR'
     });
   });
+
+  it('requests paginated earning history with the supplied query parameters', () => {
+    service.history(2, 10).subscribe();
+
+    const request = http.expectOne('http://api.test/api/v1/earnings/history?page=2&size=10');
+    expect(request.request.method).toBe('GET');
+    request.flush({ items: [], page: 2, size: 10, totalElements: 0, totalPages: 0, hasNext: false, hasPrevious: true });
+  });
+
+  it('requests the effective earning for a workday date', () => {
+    service.workday('2026-08-12').subscribe();
+
+    const request = http.expectOne('http://api.test/api/v1/earnings/workdays/2026-08-12');
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      localDate: '2026-08-12', status: 'AVAILABLE', unavailableReason: null,
+      amount: 12.5, currencyCode: 'EUR', economicSeconds: 3600
+    });
+  });
+
+  it('requests the audit corrections for a workday date', () => {
+    service.corrections('2026-08-12').subscribe();
+
+    const request = http.expectOne('http://api.test/api/v1/earnings/workdays/2026-08-12/corrections');
+    expect(request.request.method).toBe('GET');
+    request.flush([]);
+  });
 });

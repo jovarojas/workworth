@@ -3,9 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
 import {
+  EarningCorrectionResponse,
+  EarningHistoryResponse,
   EarningPeriod,
   EarningPeriodResponse,
-  EarningProjectionResponse
+  EarningProjectionResponse,
+  EarningResponse
 } from '../models/workworth-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -21,5 +24,19 @@ export class EarningsApiService {
 
   period(context: EarningPeriod): Observable<EarningPeriodResponse> {
     return this.http.get<EarningPeriodResponse>(`${this.apiBaseUrl}/earnings/periods/${context}`);
+  }
+
+  history(page: number, size: number): Observable<EarningHistoryResponse> {
+    return this.http.get<EarningHistoryResponse>(`${this.apiBaseUrl}/earnings/history`, {
+      params: { page, size }
+    });
+  }
+
+  workday(date: string): Observable<EarningResponse> {
+    return this.http.get<EarningResponse>(`${this.apiBaseUrl}/earnings/workdays/${date}`);
+  }
+
+  corrections(date: string): Observable<EarningCorrectionResponse[]> {
+    return this.http.get<EarningCorrectionResponse[]>(`${this.apiBaseUrl}/earnings/workdays/${date}/corrections`);
   }
 }

@@ -23,5 +23,19 @@ export const routes: Routes = [
         .then((module) => module.SalaryProfileComponent),
     title: 'Salario | WorkWorth'
   },
+  {
+    path: 'earnings',
+    loadComponent: () =>
+      import('./features/earnings/pages/earnings-history/earnings-history.component')
+        .then((module) => module.EarningsHistoryComponent),
+    title: 'Historial de ganancias | WorkWorth'
+  },
+  {
+    path: 'earnings/workdays/:date',
+    loadComponent: () =>
+      import('./features/earnings/pages/earning-detail/earning-detail.component')
+        .then((module) => module.EarningDetailComponent),
+    title: 'Detalle de ganancia | WorkWorth'
+  },
   { path: '**', redirectTo: '' }
 ];
