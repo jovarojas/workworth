@@ -122,7 +122,15 @@ public class WorkdayService {
     }
 
     public long time(Workday d) {
-        return calculator.calculate(d, breaks.findByWorkdayIdOrderByStartedAt(d.getId()), absences.findByWorkdayIdOrderByStartedAt(d.getId()), clock.instant());
+        return calculator.calculate(d, mealBreaks(d), partialAbsences(d), clock.instant());
+    }
+
+    public List<MealBreak> mealBreaks(Workday d) {
+        return breaks.findByWorkdayIdOrderByStartedAt(d.getId());
+    }
+
+    public List<PartialAbsence> partialAbsences(Workday d) {
+        return absences.findByWorkdayIdOrderByStartedAt(d.getId());
     }
 
     private void refresh(Workday d, Instant now) {
