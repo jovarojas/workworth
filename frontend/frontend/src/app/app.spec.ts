@@ -17,14 +17,16 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('provides navigation to the dashboard and live workday route', () => {
+  it('provides navigation to the dashboard, live workday and salary routes', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
     const links = Array.from(fixture.nativeElement.querySelectorAll('a')) as HTMLAnchorElement[];
-    expect(links.map((link) => link.textContent?.trim())).toEqual(['WORKWORTH', 'Dashboard', 'Jornada']);
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['WORKWORTH', 'Dashboard', 'Jornada', 'Salario']);
     expect(links.map((link) => link.getAttribute('href'))).toContain('/workday');
+    expect(links.map((link) => link.getAttribute('href'))).toContain('/salary');
     expect(routes.some((route) => route.path === 'workday')).toBe(true);
+    expect(routes.some((route) => route.path === 'salary')).toBe(true);
     expect(routes.find((route) => route.path === '')?.pathMatch).toBe('full');
   });
 });

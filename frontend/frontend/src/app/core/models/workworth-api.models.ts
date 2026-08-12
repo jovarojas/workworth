@@ -7,6 +7,62 @@ export type WorkdayStatus =
   | 'COMPLETED'
   | 'CANCELLED';
 
+export type IncomeSource = 'NET_MONTHLY_REAL' | 'ESTIMATED_NET' | 'UNAVAILABLE';
+export type EstimatorStatus = 'NOT_IMPLEMENTED' | 'MISSING_REQUIRED_INPUT' | 'AVAILABLE';
+export type ApiErrorCode =
+  | 'VALIDATION_ERROR'
+  | 'RESOURCE_NOT_FOUND'
+  | 'SALARY_PROFILE_CONFLICT'
+  | 'SALARY_RATE_UNAVAILABLE'
+  | 'SALARY_CONFIGURATION_INCOMPLETE';
+
+export interface ProblemDetail {
+  title?: string;
+  status?: number;
+  detail?: string;
+  code?: ApiErrorCode;
+  fieldErrors?: Record<string, string>;
+}
+
+export interface CreateSalaryProfileRequest {
+  effectiveFrom: string;
+  netMonthlyReal: number;
+  currencyCode: string;
+  payPeriods: number;
+}
+
+export interface SalaryProfileResponse {
+  id: number;
+  effectiveFrom: string;
+  grossAnnual: number | null;
+  netMonthlyReal: number | null;
+  netAnnualReal: number | null;
+  currencyCode: string;
+  payPeriods: number;
+  activeIncomeSource: IncomeSource;
+  estimatorStatus: EstimatorStatus;
+}
+
+export interface CurrentSalaryProfileResponse {
+  month: string;
+  salaryProfile: SalaryProfileResponse;
+}
+
+export interface MonthlySalaryRateResponse {
+  month: string;
+  incomeSource: IncomeSource;
+  monthlyNetIncome: number;
+  standardEconomicHours: number;
+  hourlyNetRate: number;
+  currencyCode: string;
+}
+
+export interface EstimatorStatusResponse {
+  fiscalYear: number;
+  status: EstimatorStatus;
+  requiredInputs: string[];
+}
+
 export interface EarningProjectionResponse {
   localDate: string;
   status: EarningStatus;

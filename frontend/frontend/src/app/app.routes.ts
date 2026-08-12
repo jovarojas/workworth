@@ -16,5 +16,12 @@ export const routes: Routes = [
         .then((module) => module.WorkdayLiveComponent),
     title: 'Jornada | WorkWorth'
   },
+  {
+    path: 'salary',
+    loadComponent: () =>
+      import('./features/salary/pages/salary-profile/salary-profile.component')
+        .then((module) => module.SalaryProfileComponent),
+    title: 'Salario | WorkWorth'
+  },
   { path: '**', redirectTo: '' }
 ];
