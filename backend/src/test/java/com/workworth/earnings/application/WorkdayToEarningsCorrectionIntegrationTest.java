@@ -10,6 +10,9 @@ import com.workworth.earnings.persistence.WorkdayEarningRepository;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
 import com.workworth.workday.application.WorkdayService;
+import com.workworth.workday.domain.ScheduleVariant;
+import com.workworth.workday.domain.WorkdayStatus;
+import com.workworth.workday.persistence.Workday;
 import com.workworth.workday.persistence.MealBreakRepository;
 import com.workworth.workday.persistence.PartialAbsenceRepository;
 import com.workworth.workday.persistence.WorkdayRepository;
@@ -18,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -147,10 +151,19 @@ class WorkdayToEarningsCorrectionIntegrationTest {
         mvc.perform(get("/api/v1/earnings/workdays/{date}", TODAY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.localDate").value(TODAY.toString()))
-                .andExpect(jsonPath("$.amount").isNumber());
+                .andExpect(jsonPath("$.amount").value(0.00))
+                .andExpect(jsonPath("$.economicSeconds").value(0));
         mvc.perform(get("/api/v1/earnings/history?page=0&size=1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].localDate").value(TODAY.toString()));
+                .andExpect(jsonPath("$.items[0].localDate").value(TODAY.toString()))
+                .andExpect(jsonPath("$.items[0].amount").value(0.00))
+                .andExpect(jsonPath("$.items[0].economicSeconds").value(0))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.hasPrevious").value(false));
         mvc.perform(get("/api/v1/earnings/workdays/{date}/corrections", TODAY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].cause").value("WORKDAY_CANCELLED"));
@@ -163,6 +176,86 @@ class WorkdayToEarningsCorrectionIntegrationTest {
         mvc.perform(get("/api/v1/earnings/history?page=-1"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(get("/api/v1/earnings/history?size=0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(get("/api/v1/earnings/history?size=101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(get("/api/v1/earnings/history?page=invalid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+        mvc.perform(get("/api/v1/earnings/history?size=invalid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void earningsHistoryIsPaginatedByLocalDateDescendingAndSupportsAnEmptyPage() throws Exception {
+        saveUnavailableEarning(LocalDate.of(2026, 6, 30));
+        for (LocalDate date : java.util.List.of(
+                LocalDate.of(2026, 7, 1),
+                LocalDate.of(2026, 7, 2),
+                LocalDate.of(2026, 7, 3),
+                LocalDate.of(2026, 7, 6))) {
+            workdayService.reconcile(date);
+        }
+
+        mvc.perform(get("/api/v1/earnings/history?page=0&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].localDate").value("2026-07-06"))
+                .andExpect(jsonPath("$.items[1].localDate").value("2026-07-03"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.hasPrevious").value(false));
+        mvc.perform(get("/api/v1/earnings/history?page=1&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].localDate").value("2026-07-02"))
+                .andExpect(jsonPath("$.items[1].localDate").value("2026-07-01"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.hasPrevious").value(true));
+        mvc.perform(get("/api/v1/earnings/history?page=1&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].localDate").value("2026-07-02"))
+                .andExpect(jsonPath("$.items[1].localDate").value("2026-07-01"))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.hasPrevious").value(true));
+        mvc.perform(get("/api/v1/earnings/history?page=2&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].localDate").value("2026-06-30"))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.hasPrevious").value(true));
+        mvc.perform(get("/api/v1/earnings/history?page=3&size=2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3));
+    }
+
+    @Test
+    void unavailableEarningsKeepTheirReasonAndDoNotExposeAnAmount() throws Exception {
+        LocalDate withoutSalaryProfile = LocalDate.of(2026, 6, 30);
+        saveUnavailableEarning(withoutSalaryProfile);
+
+        mvc.perform(get("/api/v1/earnings/workdays/{date}", withoutSalaryProfile))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UNAVAILABLE"))
+                .andExpect(jsonPath("$.unavailableReason").value("SALARY_PROFILE_NOT_FOUND"))
+                .andExpect(jsonPath("$.amount").doesNotExist());
+    }
+
+    private void saveUnavailableEarning(LocalDate withoutSalaryProfile) {
+        Workday workday = new Workday(withoutSalaryProfile, ZONE.getId(), ScheduleVariant.NORMAL,
+                LocalTime.of(8, 0), LocalTime.of(17, 0), 28_800, Instant.parse("2026-06-30T16:00:00Z"));
+        workday.changeStatus(WorkdayStatus.COMPLETED, Instant.parse("2026-06-30T16:00:00Z"));
+        workday = workdays.save(workday);
+        earnings.save(new com.workworth.earnings.persistence.WorkdayEarning(workday.getId(), withoutSalaryProfile,
+                com.workworth.earnings.domain.EarningStatus.UNAVAILABLE,
+                com.workworth.earnings.domain.EarningUnavailableReason.SALARY_PROFILE_NOT_FOUND, 28_800, null,
+                null, null, null, null, 0, null, null, null, Instant.parse("2026-06-30T16:00:00Z")));
     }
 
     @Test
@@ -228,6 +321,11 @@ class WorkdayToEarningsCorrectionIntegrationTest {
         var revisions = earningCorrections.findByEarningIdOrderBySequenceDesc(base.getId());
         assertThat(revisions).hasSize(2);
         assertThat(revisions.get(0).getPreviousCorrection().getId()).isEqualTo(revisions.get(1).getId());
+
+        mvc.perform(get("/api/v1/earnings/workdays/{date}/corrections", TODAY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sequence").value(2))
+                .andExpect(jsonPath("$[1].sequence").value(1));
     }
 
     @TestConfiguration
