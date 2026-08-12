@@ -3,6 +3,7 @@ package com.workworth.earnings.application;
 import com.workworth.common.money.MoneyRounding;
 import com.workworth.earnings.domain.*;
 import com.workworth.earnings.persistence.*;
+import com.workworth.preferences.application.ApplicationCurrencyProvider;
 
 import java.math.*;
 import java.time.*;
@@ -18,12 +19,16 @@ public class EarningPeriodService {
     private final EarningCorrectionRepository corrections;
     private final Clock clock;
     private final ZoneId zone;
+    private final ApplicationCurrencyProvider applicationCurrency;
 
-    public EarningPeriodService(WorkdayEarningRepository e, EarningCorrectionRepository c, Clock clock, @Value("${workworth.time-zone:Europe/Madrid}") String zone) {
+    public EarningPeriodService(WorkdayEarningRepository e, EarningCorrectionRepository c, Clock clock,
+                                @Value("${workworth.time-zone:Europe/Madrid}") String zone,
+                                ApplicationCurrencyProvider applicationCurrency) {
         earnings = e;
         corrections = c;
         this.clock = clock;
         this.zone = ZoneId.of(zone);
+        this.applicationCurrency = applicationCurrency;
     }
 
     public EarningPeriodSummary summarize(EarningPeriod period) {
@@ -50,7 +55,8 @@ public class EarningPeriodService {
             return new EarningPeriodSummary(period, EarningStatus.UNAVAILABLE, start, end, null, null, null);
         }
         BigDecimal total = values.stream().map(this::effective).reduce(BigDecimal.ZERO, BigDecimal::add).setScale(12, RoundingMode.HALF_UP);
-        String currency = values.stream().map(WorkdayEarning::getCurrencyCode).filter(Objects::nonNull).findFirst().orElse("EUR");
+        String currency = values.stream().map(WorkdayEarning::getCurrencyCode).filter(Objects::nonNull).findFirst()
+            .orElse(applicationCurrency.currentCurrency().name());
         return new EarningPeriodSummary(period, EarningStatus.AVAILABLE, start, end, total,
             total.setScale(2, MoneyRounding.ROUNDING_MODE), currency);
     }

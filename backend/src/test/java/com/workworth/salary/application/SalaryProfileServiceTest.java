@@ -4,7 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
+import com.workworth.preferences.application.ApplicationCurrencyProvider;
+import com.workworth.preferences.application.ApplicationCurrencyService;
+import com.workworth.preferences.domain.ApplicationCurrency;
 import com.workworth.salary.api.dto.CreateSalaryProfileRequest;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
 import com.workworth.salary.exception.SalaryProfileConflictException;
@@ -29,12 +33,20 @@ class SalaryProfileServiceTest {
     @Mock
     private SalaryProfileRepository salaryProfileRepository;
 
+    @Mock
+    private ApplicationCurrencyProvider applicationCurrency;
+
+    @Mock
+    private ApplicationCurrencyService applicationCurrencyService;
+
     private SalaryProfileService salaryProfileService;
 
     @BeforeEach
     void setUp() {
         salaryProfileService = new SalaryProfileService(
-                salaryProfileRepository, new SalaryProfileMapper(), clock);
+                salaryProfileRepository, new SalaryProfileMapper(), clock,
+                applicationCurrency, applicationCurrencyService);
+        when(applicationCurrency.currentCurrency()).thenReturn(ApplicationCurrency.EUR);
     }
 
     @Test
@@ -47,6 +59,7 @@ class SalaryProfileServiceTest {
 
         assertThat(response.netAnnualReal()).isEqualByComparingTo("15000.00");
         assertThat(response.activeIncomeSource().name()).isEqualTo("NET_MONTHLY_REAL");
+        verify(applicationCurrencyService).lockCurrencyAfterEconomicData();
     }
 
     @Test

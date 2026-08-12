@@ -1,6 +1,8 @@
 package com.workworth.salary.application;
 
 import com.workworth.common.money.MoneyRounding;
+import com.workworth.preferences.application.ApplicationCurrencyProvider;
+import com.workworth.preferences.application.ApplicationCurrencyService;
 import com.workworth.salary.api.dto.CreateSalaryProfileRequest;
 import com.workworth.salary.api.dto.SalaryProfileHistoryResponse;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
@@ -23,19 +25,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SalaryProfileService {
 
-    private static final String MVP_CURRENCY = "EUR";
     private static final int MVP_PAY_PERIODS = 12;
 
     private final SalaryProfileRepository salaryProfileRepository;
     private final SalaryProfileMapper salaryProfileMapper;
     private final Clock clock;
+    private final ApplicationCurrencyProvider applicationCurrency;
+    private final ApplicationCurrencyService applicationCurrencyService;
 
     public SalaryProfileService(SalaryProfileRepository salaryProfileRepository,
                                 SalaryProfileMapper salaryProfileMapper,
-                                Clock clock) {
+                                Clock clock,
+                                ApplicationCurrencyProvider applicationCurrency,
+                                ApplicationCurrencyService applicationCurrencyService) {
         this.salaryProfileRepository = salaryProfileRepository;
         this.salaryProfileMapper = salaryProfileMapper;
         this.clock = clock;
+        this.applicationCurrency = applicationCurrency;
+        this.applicationCurrencyService = applicationCurrencyService;
     }
 
     @Transactional
@@ -50,7 +57,9 @@ public class SalaryProfileService {
             request.payPeriods(),
             clock.instant());
 
-        return salaryProfileMapper.toResponse(salaryProfileRepository.save(profile));
+        SalaryProfile savedProfile = salaryProfileRepository.save(profile);
+        applicationCurrencyService.lockCurrencyAfterEconomicData();
+        return salaryProfileMapper.toResponse(savedProfile);
     }
 
     public SalaryProfileResponse getCurrent(YearMonth month) {
@@ -74,8 +83,8 @@ public class SalaryProfileService {
     }
 
     private void validateRequest(CreateSalaryProfileRequest request) {
-        if (!MVP_CURRENCY.equals(request.currencyCode())) {
-            throw new SalaryProfileConflictException("The MVP currently supports only EUR salary profiles.");
+        if (!applicationCurrency.currentCurrency().name().equals(request.currencyCode())) {
+            throw new SalaryProfileConflictException("Salary profile currency must match the application currency.");
         }
         if (request.payPeriods() != MVP_PAY_PERIODS) {
             throw new SalaryProfileConflictException("The MVP supports exactly 12 equal pay periods.");

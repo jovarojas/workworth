@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+import com.workworth.preferences.application.ApplicationCurrencyService;
 import com.workworth.salary.application.MonthlySalaryRateService;
 import com.workworth.salary.exception.SalaryRateUnavailableException;
 import com.workworth.workday.application.WorkdayService;
@@ -27,7 +28,8 @@ class EarningMaterializationServiceTest {
 
         EarningMaterializationService service = new EarningMaterializationService(
                 earnings, mock(WorkdayService.class), mock(MonthlySalaryRateService.class),
-                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("Europe/Madrid")));
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("Europe/Madrid")),
+                mock(ApplicationCurrencyService.class));
 
         assertThatThrownBy(() -> service.materialize(day)).isInstanceOf(IllegalStateException.class);
         verifyNoInteractions(earnings);
@@ -48,8 +50,10 @@ class EarningMaterializationServiceTest {
         when(earnings.findByWorkdayId(4L)).thenReturn(java.util.Optional.empty());
         when(earnings.save(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> invocation.getArgument(0));
 
+        ApplicationCurrencyService applicationCurrency = mock(ApplicationCurrencyService.class);
         var saved = new EarningMaterializationService(earnings, workdays, rates,
-                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("Europe/Madrid")))
+                Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneId.of("Europe/Madrid")),
+                applicationCurrency)
                 .materialize(day);
 
         org.assertj.core.api.Assertions.assertThat(saved.getStatus())
@@ -57,5 +61,6 @@ class EarningMaterializationServiceTest {
         org.assertj.core.api.Assertions.assertThat(saved.getUnavailableReason())
                 .isEqualTo(com.workworth.earnings.domain.EarningUnavailableReason.SALARY_RATE_UNAVAILABLE);
         verify(earnings).save(saved);
+        verify(applicationCurrency).lockCurrencyAfterEconomicData();
     }
 }

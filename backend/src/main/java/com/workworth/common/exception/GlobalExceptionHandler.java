@@ -4,6 +4,7 @@ import com.workworth.salary.exception.SalaryConfigurationIncompleteException;
 import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.exception.SalaryProfileNotFoundException;
 import com.workworth.salary.exception.SalaryRateUnavailableException;
+import com.workworth.preferences.exception.ApplicationCurrencyLockedException;
 import com.workworth.workday.exception.WorkdayConflictException;
 import com.workworth.workday.exception.WorkdayIntervalValidationException;
 import com.workworth.workday.exception.WorkdayNotFoundException;
@@ -60,6 +61,11 @@ public class GlobalExceptionHandler {
     ProblemDetail handleIncompleteConfiguration(SalaryConfigurationIncompleteException exception) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.SALARY_CONFIGURATION_INCOMPLETE,
             exception.getMessage());
+    }
+
+    @ExceptionHandler(ApplicationCurrencyLockedException.class)
+    ProblemDetail handleApplicationCurrencyLocked(ApplicationCurrencyLockedException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.APPLICATION_CURRENCY_LOCKED, exception.getMessage());
     }
 
     @ExceptionHandler(WorkdayNotFoundException.class)

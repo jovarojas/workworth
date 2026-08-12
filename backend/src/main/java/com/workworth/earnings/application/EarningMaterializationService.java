@@ -4,6 +4,7 @@ import com.workworth.earnings.domain.EarningStatus;
 import com.workworth.earnings.domain.EarningUnavailableReason;
 import com.workworth.earnings.persistence.WorkdayEarning;
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+import com.workworth.preferences.application.ApplicationCurrencyService;
 import com.workworth.salary.application.MonthlySalaryRateService;
 import com.workworth.salary.exception.SalaryConfigurationIncompleteException;
 import com.workworth.salary.exception.SalaryProfileNotFoundException;
@@ -26,13 +27,16 @@ public class EarningMaterializationService {
     private final WorkdayService workdays;
     private final MonthlySalaryRateService rates;
     private final Clock clock;
+    private final ApplicationCurrencyService applicationCurrencyService;
 
     public EarningMaterializationService(WorkdayEarningRepository earnings, WorkdayService workdays,
-                                         MonthlySalaryRateService rates, Clock clock) {
+                                         MonthlySalaryRateService rates, Clock clock,
+                                         ApplicationCurrencyService applicationCurrencyService) {
         this.earnings = earnings;
         this.workdays = workdays;
         this.rates = rates;
         this.clock = clock;
+        this.applicationCurrencyService = applicationCurrencyService;
     }
 
     @Transactional
@@ -47,7 +51,7 @@ public class EarningMaterializationService {
         try {
             var rate = rates.getRate(YearMonth.from(day.getLocalDate()));
             BigDecimal amount = rate.hourlyNetRate().multiply(BigDecimal.valueOf(seconds)).divide(BigDecimal.valueOf(3600), 12, RoundingMode.HALF_UP);
-            return earnings.save(new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.AVAILABLE, seconds, amount, rate.salaryProfileId(), rate.incomeSource(), rate.monthlyNetIncome(), rate.annualNetIncome(), rate.payPeriods(), rate.currencyCode(), rate.standardEconomicHours(), rate.hourlyNetRate(), clock.instant()));
+            return saveAndLock(new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.AVAILABLE, seconds, amount, rate.salaryProfileId(), rate.incomeSource(), rate.monthlyNetIncome(), rate.annualNetIncome(), rate.payPeriods(), rate.currencyCode(), rate.standardEconomicHours(), rate.hourlyNetRate(), clock.instant()));
         } catch (SalaryProfileNotFoundException exception) {
             return unavailable(day, seconds, EarningUnavailableReason.SALARY_PROFILE_NOT_FOUND);
         } catch (SalaryConfigurationIncompleteException exception) {
@@ -58,6 +62,12 @@ public class EarningMaterializationService {
     }
 
     private WorkdayEarning unavailable(Workday day, long seconds, EarningUnavailableReason reason) {
-        return earnings.save(new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.UNAVAILABLE, reason, seconds, null, null, null, null, null, 0, null, null, null, clock.instant()));
+        return saveAndLock(new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.UNAVAILABLE, reason, seconds, null, null, null, null, null, 0, null, null, null, clock.instant()));
+    }
+
+    private WorkdayEarning saveAndLock(WorkdayEarning earning) {
+        WorkdayEarning saved = earnings.save(earning);
+        applicationCurrencyService.lockCurrencyAfterEconomicData();
+        return saved;
     }
 }
