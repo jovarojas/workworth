@@ -14,7 +14,9 @@ export type ApiErrorCode =
   | 'RESOURCE_NOT_FOUND'
   | 'SALARY_PROFILE_CONFLICT'
   | 'SALARY_RATE_UNAVAILABLE'
-  | 'SALARY_CONFIGURATION_INCOMPLETE';
+  | 'SALARY_CONFIGURATION_INCOMPLETE'
+  | 'WORKDAY_CONFLICT'
+  | 'WORKDAY_INTERVAL_INVALID';
 
 export interface ProblemDetail {
   title?: string;
@@ -80,6 +82,20 @@ export interface EarningPeriodResponse {
   currencyCode: string;
 }
 
+export interface MealBreakResponse {
+  id: number;
+  startedAt: string;
+  endedAt: string | null;
+  endedAutomatically: boolean;
+}
+
+export interface PartialAbsenceResponse {
+  id: number;
+  startedAt: string;
+  endedAt: string;
+  reason: string | null;
+}
+
 export interface WorkdayResponse {
   id: number;
   localDate: string;
@@ -89,4 +105,6 @@ export interface WorkdayResponse {
   scheduledEnd: string;
   maximumEconomicSeconds: number;
   economicSeconds: number;
+  mealBreaks: MealBreakResponse[];
+  partialAbsences: PartialAbsenceResponse[];
 }

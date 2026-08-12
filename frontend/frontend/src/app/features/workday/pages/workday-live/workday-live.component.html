@@ -56,5 +56,57 @@
         </mat-card-content>
       </mat-card>
     </section>
+
+    <section class="workday-actions" aria-label="Acciones de jornada">
+      <div>
+        <p class="eyebrow">ACCIONES</p>
+        <h2>Gestiona la jornada actual</h2>
+      </div>
+
+      @if (actionError(); as actionErrorMessage) {
+        <p class="workday-actions__error" role="alert">{{ actionErrorMessage }}</p>
+      }
+
+      <div class="workday-actions__buttons">
+        @if (currentWorkday.status === 'ACTIVE') {
+          <button
+            mat-flat-button
+            type="button"
+            color="primary"
+            data-testid="start-meal-break"
+            [disabled]="actionInProgress() !== null"
+            (click)="startMealBreak(currentWorkday)">
+            <mat-icon aria-hidden="true">restaurant</mat-icon>
+            Iniciar pausa
+          </button>
+        }
+
+        @if (currentWorkday.status === 'ON_MEAL_BREAK' && openMealBreak(); as mealBreak) {
+          <button
+            mat-flat-button
+            type="button"
+            color="primary"
+            data-testid="end-meal-break"
+            [disabled]="actionInProgress() !== null"
+            (click)="endMealBreak(currentWorkday, mealBreak)">
+            <mat-icon aria-hidden="true">play_arrow</mat-icon>
+            Finalizar pausa
+          </button>
+        }
+
+        @if (currentWorkday.status === 'SCHEDULED' || currentWorkday.status === 'ACTIVE' || currentWorkday.status === 'ON_MEAL_BREAK' || currentWorkday.status === 'COMPLETED') {
+          <button
+            mat-stroked-button
+            type="button"
+            color="warn"
+            data-testid="cancel-workday"
+            [disabled]="actionInProgress() !== null"
+            (click)="cancelWorkday(currentWorkday)">
+            <mat-icon aria-hidden="true">event_busy</mat-icon>
+            Hoy no trabajo
+          </button>
+        }
+      </div>
+    </section>
   }
 </main>

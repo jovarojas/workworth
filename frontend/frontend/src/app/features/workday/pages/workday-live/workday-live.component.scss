@@ -99,6 +99,32 @@
   }
 }
 
+.workday-actions {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid #e1e5ee;
+  border-radius: 1rem;
+  background: #fff;
+
+  h2 {
+    margin: .35rem 0 0;
+    font-size: 1.25rem;
+  }
+}
+
+.workday-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.workday-actions__error {
+  margin: 0;
+  color: #b42318;
+}
+
 .feedback {
   display: grid;
   justify-items: center;
@@ -120,5 +146,9 @@
 @media (max-width: 620px) {
   .details-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workday-actions__buttons button {
+    width: 100%;
   }
 }
