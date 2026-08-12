@@ -63,6 +63,24 @@ describe('DashboardPageComponent', () => {
     expect(content).not.toContain('0,00');
   });
 
+  it('shows an unavailable period without passing a null amount to the currency formatter', () => {
+    mockAvailableDashboard();
+    earnings.period.mockImplementation((context: string) => of({
+      ...period(context, periodAmount(context)),
+      status: context === 'MONTH' ? 'UNAVAILABLE' : 'AVAILABLE',
+      amount: context === 'MONTH' ? null : periodAmount(context),
+      currencyCode: context === 'MONTH' ? null : 'EUR'
+    }));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No hay un importe evaluable para este mes');
+    expect(content).toContain('10.11');
+    expect(content).toContain('3,456.78');
+  });
+
   it('keeps earnings visible when there is no current workday', () => {
     mockAvailableDashboard();
     workdays.current.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
@@ -194,6 +212,7 @@ describe('DashboardPageComponent', () => {
       context,
       startDate: '2026-08-10',
       endDate: '2026-08-17',
+      status: 'AVAILABLE',
       amount,
       currencyCode: 'EUR'
     };

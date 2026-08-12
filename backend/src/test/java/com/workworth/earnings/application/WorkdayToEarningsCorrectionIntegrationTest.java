@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.hamcrest.Matchers.nullValue;
 
 @SpringBootTest(classes = WorkWorthApplication.class)
 @Testcontainers
@@ -138,6 +139,7 @@ class WorkdayToEarningsCorrectionIntegrationTest {
         mvc.perform(get("/api/v1/earnings/periods/TODAY"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.context").value("TODAY"))
+                .andExpect(jsonPath("$.status").value("AVAILABLE"))
                 .andExpect(jsonPath("$.amount").value(0.00));
         mvc.perform(get("/api/v1/earnings/periods/WEEK"))
                 .andExpect(status().isOk())
@@ -188,6 +190,18 @@ class WorkdayToEarningsCorrectionIntegrationTest {
         mvc.perform(get("/api/v1/earnings/history?size=invalid"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void earningsPeriodsExposeUnavailableContextsWithoutInventingZeroAmounts() throws Exception {
+        saveUnavailableEarning(TODAY);
+
+        mvc.perform(get("/api/v1/earnings/periods/TODAY"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.context").value("TODAY"))
+                .andExpect(jsonPath("$.status").value("UNAVAILABLE"))
+                .andExpect(jsonPath("$.amount").value(nullValue()))
+                .andExpect(jsonPath("$.currencyCode").value(nullValue()));
     }
 
     @Test

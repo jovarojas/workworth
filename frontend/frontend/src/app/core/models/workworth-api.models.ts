@@ -78,8 +78,9 @@ export interface EarningPeriodResponse {
   context: EarningPeriod;
   startDate: string | null;
   endDate: string | null;
-  amount: number;
-  currencyCode: string;
+  status: EarningStatus;
+  amount: number | null;
+  currencyCode: string | null;
 }
 
 export interface EarningResponse {

@@ -85,8 +85,13 @@
         } @else if (todayError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (today(); as todaySummary) {
-          <strong>{{ todaySummary.amount | currency:todaySummary.currencyCode:'symbol':'1.2-2' }}</strong>
-          <span class="summary-card__detail">Total registrado hoy</span>
+          @if (isPeriodUnavailable(todaySummary)) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe evaluable para hoy</span>
+          } @else {
+            <strong>{{ todaySummary.amount | currency:(todaySummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <span class="summary-card__detail">Total registrado hoy</span>
+          }
         }
       </mat-card-content>
     </mat-card>
@@ -99,8 +104,13 @@
         } @else if (weekError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (week(); as weekSummary) {
-          <strong>{{ weekSummary.amount | currency:weekSummary.currencyCode:'symbol':'1.2-2' }}</strong>
-          <span class="summary-card__detail">Resumen semanal</span>
+          @if (isPeriodUnavailable(weekSummary)) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe evaluable para esta semana</span>
+          } @else {
+            <strong>{{ weekSummary.amount | currency:(weekSummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <span class="summary-card__detail">Resumen semanal</span>
+          }
         }
       </mat-card-content>
     </mat-card>
@@ -113,8 +123,13 @@
         } @else if (monthError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (month(); as monthSummary) {
-          <strong>{{ monthSummary.amount | currency:monthSummary.currencyCode:'symbol':'1.2-2' }}</strong>
-          <span class="summary-card__detail">Resumen mensual</span>
+          @if (isPeriodUnavailable(monthSummary)) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe evaluable para este mes</span>
+          } @else {
+            <strong>{{ monthSummary.amount | currency:(monthSummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <span class="summary-card__detail">Resumen mensual</span>
+          }
         }
       </mat-card-content>
     </mat-card>
@@ -127,8 +142,13 @@
         } @else if (allTimeError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (allTime(); as allTimeSummary) {
-          <strong>{{ allTimeSummary.amount | currency:allTimeSummary.currencyCode:'symbol':'1.2-2' }}</strong>
-          <span class="summary-card__detail">Ingresos netos registrados por WorkWorth</span>
+          @if (isPeriodUnavailable(allTimeSummary)) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe histórico evaluable</span>
+          } @else {
+            <strong>{{ allTimeSummary.amount | currency:(allTimeSummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <span class="summary-card__detail">Ingresos netos registrados por WorkWorth</span>
+          }
         }
       </mat-card-content>
     </mat-card>

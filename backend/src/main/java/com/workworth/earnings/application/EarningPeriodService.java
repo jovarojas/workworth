@@ -40,10 +40,19 @@ public class EarningPeriodService {
             case MONTH -> start.plusMonths(1);
             case ALL_TIME -> null;
         };
-        List<WorkdayEarning> values = earnings.findAll().stream().filter(e -> e.getStatus() == EarningStatus.AVAILABLE).filter(e -> start == null || (!e.getLocalDate().isBefore(start) && e.getLocalDate().isBefore(end))).toList();
+        List<WorkdayEarning> periodEarnings = earnings.findAll().stream()
+            .filter(e -> start == null || (!e.getLocalDate().isBefore(start) && e.getLocalDate().isBefore(end)))
+            .toList();
+        List<WorkdayEarning> values = periodEarnings.stream()
+            .filter(e -> e.getStatus() == EarningStatus.AVAILABLE)
+            .toList();
+        if (values.isEmpty() && periodEarnings.stream().anyMatch(e -> e.getStatus() == EarningStatus.UNAVAILABLE)) {
+            return new EarningPeriodSummary(period, EarningStatus.UNAVAILABLE, start, end, null, null, null);
+        }
         BigDecimal total = values.stream().map(this::effective).reduce(BigDecimal.ZERO, BigDecimal::add).setScale(12, RoundingMode.HALF_UP);
         String currency = values.stream().map(WorkdayEarning::getCurrencyCode).filter(Objects::nonNull).findFirst().orElse("EUR");
-        return new EarningPeriodSummary(period, start, end, total, total.setScale(2, MoneyRounding.ROUNDING_MODE), currency);
+        return new EarningPeriodSummary(period, EarningStatus.AVAILABLE, start, end, total,
+            total.setScale(2, MoneyRounding.ROUNDING_MODE), currency);
     }
 
     private BigDecimal effective(WorkdayEarning e) {

@@ -42,6 +42,7 @@ describe('EarningsApiService', () => {
       context,
       startDate: context === 'ALL_TIME' ? null : '2026-08-12',
       endDate: context === 'ALL_TIME' ? null : '2026-08-12',
+      status: 'AVAILABLE',
       amount: 123.45,
       currencyCode: 'EUR'
     });

@@ -69,6 +69,10 @@ export class DashboardPageComponent implements OnInit {
     }[status];
   }
 
+  isPeriodUnavailable(period: EarningPeriodResponse): boolean {
+    return period.status === 'UNAVAILABLE';
+  }
+
   private loadProjection(showLoading: boolean): void {
     if (showLoading) {
       this.projectionLoading.set(true);
