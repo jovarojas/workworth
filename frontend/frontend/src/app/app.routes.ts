@@ -44,5 +44,12 @@ export const routes: Routes = [
         .then((module) => module.RewardsPageComponent),
     title: 'Recompensas | WorkWorth'
   },
+  {
+    path: 'preferences/currency',
+    loadComponent: () =>
+      import('./features/preferences/pages/currency-settings/currency-settings.component')
+        .then((module) => module.CurrencySettingsComponent),
+    title: 'Ajustes | WorkWorth'
+  },
   { path: '**', redirectTo: '' }
 ];

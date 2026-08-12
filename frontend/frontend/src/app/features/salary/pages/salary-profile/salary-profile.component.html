@@ -75,11 +75,22 @@
           <h2>Indica tu neto mensual real</h2>
           <p class="setup-card__intro">Es el importe que recibes habitualmente en cada una de tus 12 pagas.</p>
 
+          @if (loadingCurrency()) {
+            <div class="loading loading--compact" aria-live="polite"><mat-spinner diameter="24" /> Cargando moneda global…</div>
+          } @else if (currencyError(); as errorMessage) {
+            <div class="feedback feedback--error" role="alert">
+              <p>{{ errorMessage }}</p>
+              <button mat-stroked-button type="button" (click)="loadApplicationCurrency()">Reintentar</button>
+            </div>
+          }
+
           <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
             <mat-form-field appearance="outline">
               <mat-label>Neto mensual real</mat-label>
               <input matInput formControlName="netMonthlyReal" inputmode="decimal" autocomplete="off" aria-describedby="net-monthly-help" />
-              <span matTextSuffix>EUR</span>
+              @if (applicationCurrency(); as settings) {
+                <span matTextSuffix>{{ settings.currencyCode }}</span>
+              }
               <mat-hint id="net-monthly-help">Máximo dos decimales.</mat-hint>
               @if (controlError('netMonthlyReal'); as error) { <mat-error>{{ error }}</mat-error> }
             </mat-form-field>
@@ -110,7 +121,7 @@
               <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
             }
 
-            <button mat-flat-button type="submit" [disabled]="saving()">
+            <button mat-flat-button type="submit" [disabled]="saving() || loadingCurrency() || !!currencyError()">
               @if (saving()) { Guardando… } @else { Guardar neto mensual real }
             </button>
           </form>

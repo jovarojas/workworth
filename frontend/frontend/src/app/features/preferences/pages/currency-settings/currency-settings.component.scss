@@ -1,0 +1,84 @@
+:host {
+  display: block;
+}
+
+.currency-settings {
+  width: min(100% - 2rem, 920px);
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4.5rem) 0;
+}
+
+.currency-settings__header {
+  margin-bottom: 2rem;
+
+  h1 {
+    margin: .25rem 0 .5rem;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    letter-spacing: -.05em;
+  }
+
+  p:last-child {
+    max-width: 38rem;
+    margin: 0;
+    color: #56627a;
+  }
+}
+
+.eyebrow {
+  margin: 0;
+  color: #56627a;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.currency-settings__card {
+  max-width: 38rem;
+  border: 1px solid #e1e5ee;
+  border-radius: 1rem;
+  box-shadow: none;
+
+  h2 {
+    margin: .3rem 0 1rem;
+    color: #172033;
+    font-size: clamp(2rem, 5vw, 3rem);
+  }
+
+  p {
+    color: #56627a;
+  }
+}
+
+mat-form-field {
+  display: block;
+  max-width: 22rem;
+  margin: 1.25rem 0 .5rem;
+}
+
+.loading,
+.feedback {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  color: #56627a;
+
+  p {
+    margin: 0;
+  }
+}
+
+.loading {
+  min-height: 8rem;
+}
+
+.feedback--error {
+  color: #b42318;
+}
+
+.feedback--success {
+  color: #067647;
+}
+
+.currency-settings__locked {
+  margin: 0;
+}

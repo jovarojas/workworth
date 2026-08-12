@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
+import { PreferencesApiService } from '../../../../core/services/preferences-api.service';
 import { SalaryApiService } from '../../../../core/services/salary-api.service';
 import { SalaryProfileComponent } from './salary-profile.component';
 
@@ -11,14 +12,22 @@ describe('SalaryProfileComponent', () => {
     rate: vi.fn(),
     estimatorStatus: vi.fn()
   };
+  const preferences = {
+    currency: vi.fn()
+  };
 
   beforeEach(async () => {
     Object.values(salaries).forEach((method) => method.mockReset());
+    preferences.currency.mockReset();
     salaries.estimatorStatus.mockReturnValue(of(estimator()));
+    preferences.currency.mockReturnValue(of(currency()));
 
     await TestBed.configureTestingModule({
       imports: [SalaryProfileComponent],
-      providers: [{ provide: SalaryApiService, useValue: salaries }]
+      providers: [
+        { provide: SalaryApiService, useValue: salaries },
+        { provide: PreferencesApiService, useValue: preferences }
+      ]
     }).compileComponents();
   });
 
@@ -65,6 +74,104 @@ describe('SalaryProfileComponent', () => {
     });
     expect(salaries.rate).toHaveBeenCalledWith('2026-08');
     expect(fixture.nativeElement.textContent).toContain('1,250.00');
+  });
+
+  it('waits for the global currency before allowing a salary profile submission', () => {
+    const globalCurrency = new Subject<{ currencyCode: 'EUR' | 'USD'; changeAllowed: boolean }>();
+    preferences.currency.mockReturnValue(globalCurrency);
+    salaries.current.mockReturnValue(throwError(() => problem(404, 'RESOURCE_NOT_FOUND', 'Not found')));
+
+    const fixture = TestBed.createComponent(SalaryProfileComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.form.patchValue({ effectiveFrom: '2026-08-01', netMonthlyReal: '1250.00' });
+
+    component.submit();
+    expect(salaries.create).not.toHaveBeenCalled();
+
+    globalCurrency.next(currency('USD'));
+    globalCurrency.complete();
+    salaries.create.mockReturnValue(of({ ...profile(), currencyCode: 'USD' }));
+    salaries.rate.mockReturnValue(of({ ...rate(), currencyCode: 'USD' }));
+    component.submit();
+
+    expect(salaries.create).toHaveBeenCalledWith({
+      effectiveFrom: '2026-08-01', netMonthlyReal: 1250, currencyCode: 'USD', payPeriods: 12
+    });
+  });
+
+  it('keeps the currency empty and the submit disabled while preferences are loading', () => {
+    const globalCurrency = new Subject<{ currencyCode: 'EUR' | 'USD'; changeAllowed: boolean }>();
+    preferences.currency.mockReturnValue(globalCurrency);
+    salaries.current.mockReturnValue(throwError(() => problem(404, 'RESOURCE_NOT_FOUND', 'Not found')));
+
+    const fixture = TestBed.createComponent(SalaryProfileComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.form.patchValue({ effectiveFrom: '2026-08-01', netMonthlyReal: '1250.00' });
+    fixture.detectChanges();
+
+    expect(component.form.controls.currencyCode.getRawValue()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('EUR');
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+  });
+
+  it('keeps the currency empty and blocks submission when preferences fail', () => {
+    preferences.currency.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+    salaries.current.mockReturnValue(throwError(() => problem(404, 'RESOURCE_NOT_FOUND', 'Not found')));
+
+    const fixture = TestBed.createComponent(SalaryProfileComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.form.patchValue({ effectiveFrom: '2026-08-01', netMonthlyReal: '1250.00' });
+    component.submit();
+    fixture.detectChanges();
+
+    expect(component.form.controls.currencyCode.getRawValue()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('EUR');
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+    expect(salaries.create).not.toHaveBeenCalled();
+  });
+
+  it('shows EUR and allows submission after preferences provide EUR', () => {
+    salaries.current.mockReturnValue(throwError(() => problem(404, 'RESOURCE_NOT_FOUND', 'Not found')));
+
+    const fixture = TestBed.createComponent(SalaryProfileComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.form.patchValue({ effectiveFrom: '2026-08-01', netMonthlyReal: '1250.00' });
+    fixture.detectChanges();
+
+    expect(component.form.controls.currencyCode.getRawValue()).toBe('EUR');
+    expect(fixture.nativeElement.textContent).toContain('EUR');
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(false);
+  });
+
+  it('shows the global USD currency next to the monthly net amount', () => {
+    preferences.currency.mockReturnValue(of(currency('USD')));
+    salaries.current.mockReturnValue(throwError(() => problem(404, 'RESOURCE_NOT_FOUND', 'Not found')));
+
+    const fixture = TestBed.createComponent(SalaryProfileComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.controls.currencyCode.getRawValue()).toBe('USD');
+    expect(fixture.nativeElement.textContent).toContain('USD');
+    expect(fixture.nativeElement.textContent).not.toContain('EUR');
+  });
+
+  it('does not submit a fallback currency when loading global preferences fails', () => {
+    preferences.currency.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+    salaries.current.mockReturnValue(throwError(() => problem(404, 'RESOURCE_NOT_FOUND', 'Not found')));
+
+    const fixture = TestBed.createComponent(SalaryProfileComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.form.patchValue({ effectiveFrom: '2026-08-01', netMonthlyReal: '1250.00' });
+    component.submit();
+    fixture.detectChanges();
+
+    expect(salaries.create).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('No se ha podido cargar la moneda global');
   });
 
   it('keeps the profile visible when the monthly rate is unavailable', () => {
@@ -168,6 +275,10 @@ describe('SalaryProfileComponent', () => {
 
   function estimator() {
     return { fiscalYear: 2026, status: 'NOT_IMPLEMENTED', requiredInputs: ['Fiscal estimator implementation'] };
+  }
+
+  function currency(currencyCode: 'EUR' | 'USD' = 'EUR') {
+    return { currencyCode, changeAllowed: true };
   }
 
   function problem(status: number, code: string, detail: string): HttpErrorResponse {

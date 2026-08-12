@@ -9,13 +9,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
+import { problemDetailFrom } from '../../../../core/http/problem-detail';
 import {
+  ApplicationCurrency,
+  ApplicationCurrencyResponse,
   CurrentSalaryProfileResponse,
   EstimatorStatusResponse,
   MonthlySalaryRateResponse,
-  ProblemDetail,
   SalaryProfileResponse
 } from '../../../../core/models/workworth-api.models';
+import { PreferencesApiService } from '../../../../core/services/preferences-api.service';
 import { SalaryApiService } from '../../../../core/services/salary-api.service';
 
 const firstDayOfMonth: ValidatorFn = (control): ValidationErrors | null =>
@@ -44,21 +47,25 @@ const moneyScale: ValidatorFn = (control): ValidationErrors | null =>
 })
 export class SalaryProfileComponent implements OnInit {
   private readonly salaries = inject(SalaryApiService);
+  private readonly preferences = inject(PreferencesApiService);
 
   readonly profile = signal<SalaryProfileResponse | null>(null);
   readonly profileMonth = signal<string | null>(null);
   readonly rate = signal<MonthlySalaryRateResponse | null>(null);
   readonly estimator = signal<EstimatorStatusResponse | null>(null);
+  readonly applicationCurrency = signal<ApplicationCurrencyResponse | null>(null);
 
   readonly loadingProfile = signal(true);
   readonly loadingRate = signal(false);
   readonly loadingEstimator = signal(true);
+  readonly loadingCurrency = signal(true);
   readonly saving = signal(false);
 
   readonly profileMissing = signal(false);
   readonly profileError = signal<string | null>(null);
   readonly rateError = signal<string | null>(null);
   readonly estimatorError = signal<string | null>(null);
+  readonly currencyError = signal<string | null>(null);
   readonly submitError = signal<string | null>(null);
   readonly fieldErrors = signal<Record<string, string>>({});
   readonly submitted = signal(false);
@@ -74,8 +81,7 @@ export class SalaryProfileComponent implements OnInit {
       nonNullable: true,
       validators: [Validators.required, moneyScale]
     }),
-    currencyCode: new FormControl('EUR', {
-      nonNullable: true,
+    currencyCode: new FormControl<ApplicationCurrency | null>({ value: null, disabled: true }, {
       validators: [Validators.required, Validators.pattern(/^[A-Z]{3}$/)]
     }),
     payPeriods: new FormControl(12, {
@@ -85,6 +91,7 @@ export class SalaryProfileComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadApplicationCurrency();
     this.loadCurrentProfile();
     this.loadEstimatorStatus();
   }
@@ -124,12 +131,33 @@ export class SalaryProfileComponent implements OnInit {
       });
   }
 
+  loadApplicationCurrency(): void {
+    this.loadingCurrency.set(true);
+    this.currencyError.set(null);
+    this.applicationCurrency.set(null);
+    this.form.controls.currencyCode.setValue(null, { emitEvent: false });
+    this.form.controls.currencyCode.disable({ emitEvent: false });
+
+    this.preferences.currency()
+      .pipe(finalize(() => this.loadingCurrency.set(false)))
+      .subscribe({
+        next: (settings) => {
+          this.applicationCurrency.set(settings);
+          this.form.controls.currencyCode.setValue(settings.currencyCode, { emitEvent: false });
+        },
+        error: (error: unknown) => this.currencyError.set(
+          this.errorDetail(error, 'No se ha podido cargar la moneda global. No se puede crear un perfil salarial.')
+        )
+      });
+  }
+
   submit(): void {
     this.submitted.set(true);
     this.submitError.set(null);
     this.fieldErrors.set({});
 
-    if (this.form.invalid || this.saving()) {
+    const applicationCurrency = this.applicationCurrency();
+    if (this.form.invalid || this.saving() || this.loadingCurrency() || !applicationCurrency) {
       this.form.markAllAsTouched();
       return;
     }
@@ -139,7 +167,7 @@ export class SalaryProfileComponent implements OnInit {
     this.salaries.create({
       effectiveFrom: value.effectiveFrom,
       netMonthlyReal: Number(value.netMonthlyReal),
-      currencyCode: value.currencyCode,
+      currencyCode: applicationCurrency.currencyCode,
       payPeriods: value.payPeriods
     })
       .pipe(finalize(() => this.saving.set(false)))
@@ -200,25 +228,18 @@ export class SalaryProfileComponent implements OnInit {
   }
 
   private handleSubmissionError(error: unknown): void {
-    const problem = this.problemDetail(error);
+    const problem = problemDetailFrom(error);
     this.fieldErrors.set(problem?.fieldErrors ?? {});
     this.submitError.set(this.errorDetail(error, 'No se ha podido guardar el perfil salarial.'));
   }
 
   private isNotFound(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && error.status === 404 && this.problemDetail(error)?.code === 'RESOURCE_NOT_FOUND';
+    return error instanceof HttpErrorResponse && error.status === 404 && problemDetailFrom(error)?.code === 'RESOURCE_NOT_FOUND';
   }
 
   private errorDetail(error: unknown, fallback: string): string {
-    const detail = this.problemDetail(error)?.detail;
+    const detail = problemDetailFrom(error)?.detail;
     return detail || fallback;
-  }
-
-  private problemDetail(error: unknown): ProblemDetail | null {
-    if (!(error instanceof HttpErrorResponse) || !error.error || typeof error.error !== 'object') {
-      return null;
-    }
-    return error.error as ProblemDetail;
   }
 
   private currentMonthFirstDay(): string {

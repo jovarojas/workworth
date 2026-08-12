@@ -27,6 +27,8 @@
 
 .app-nav__links {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: .25rem;
 
   a {

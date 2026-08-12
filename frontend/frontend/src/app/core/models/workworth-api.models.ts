@@ -1,5 +1,6 @@
 export type EarningStatus = 'AVAILABLE' | 'UNAVAILABLE';
 export type EarningPeriod = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL_TIME';
+export type ApplicationCurrency = 'EUR' | 'USD';
 export type RewardStatus = 'PENDING' | 'ACQUIRED';
 export type WorkdayStatus =
   | 'SCHEDULED'
@@ -16,6 +17,7 @@ export type ApiErrorCode =
   | 'SALARY_PROFILE_CONFLICT'
   | 'SALARY_RATE_UNAVAILABLE'
   | 'SALARY_CONFIGURATION_INCOMPLETE'
+  | 'APPLICATION_CURRENCY_LOCKED'
   | 'REWARD_CONFLICT'
   | 'REWARD_CURRENCY_MISMATCH'
   | 'WORKDAY_CONFLICT'
@@ -29,12 +31,21 @@ export interface ProblemDetail {
   fieldErrors?: Record<string, string>;
 }
 
+export interface ApplicationCurrencyResponse {
+  currencyCode: ApplicationCurrency;
+  changeAllowed: boolean;
+}
+
+export interface UpdateApplicationCurrencyRequest {
+  currencyCode: ApplicationCurrency;
+}
+
 export interface RewardResponse {
   id: number;
   name: string;
   quantity: number;
   price: number;
-  currencyCode: 'EUR' | 'USD';
+  currencyCode: ApplicationCurrency;
   status: RewardStatus;
   lastReachedContext: EarningPeriod | null;
   createdAt: string;
