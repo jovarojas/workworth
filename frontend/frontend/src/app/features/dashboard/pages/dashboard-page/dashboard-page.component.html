@@ -79,6 +79,20 @@
   <section class="summary-grid" aria-label="Resumen de ganancias">
     <mat-card class="summary-card">
       <mat-card-content>
+        <p class="eyebrow">HOY</p>
+        @if (todayLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (todayError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (today(); as todaySummary) {
+          <strong>{{ todaySummary.amount | currency:todaySummary.currencyCode:'symbol':'1.2-2' }}</strong>
+          <span class="summary-card__detail">Total registrado hoy</span>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card">
+      <mat-card-content>
         <p class="eyebrow">SEMANA</p>
         @if (weekLoading()) {
           <span class="summary-card__loading" aria-live="polite">Cargando…</span>
@@ -101,6 +115,20 @@
         } @else if (month(); as monthSummary) {
           <strong>{{ monthSummary.amount | currency:monthSummary.currencyCode:'symbol':'1.2-2' }}</strong>
           <span class="summary-card__detail">Resumen mensual</span>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card summary-card--all-time">
+      <mat-card-content>
+        <p class="eyebrow">ACUMULADO</p>
+        @if (allTimeLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (allTimeError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (allTime(); as allTimeSummary) {
+          <strong>{{ allTimeSummary.amount | currency:allTimeSummary.currencyCode:'symbol':'1.2-2' }}</strong>
+          <span class="summary-card__detail">Ingresos netos registrados por WorkWorth</span>
         }
       </mat-card-content>
     </mat-card>

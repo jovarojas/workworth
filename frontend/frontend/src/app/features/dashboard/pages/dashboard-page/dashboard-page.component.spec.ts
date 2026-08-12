@@ -28,7 +28,7 @@ describe('DashboardPageComponent', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  it('shows the API-provided earning, workday, week and month data', () => {
+  it('shows API-provided earning, workday and all four period summaries literally', () => {
     mockAvailableDashboard();
 
     const fixture = TestBed.createComponent(DashboardPageComponent);
@@ -36,12 +36,16 @@ describe('DashboardPageComponent', () => {
 
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('12.50');
+    expect(content).toContain('10.11');
     expect(content).toContain('50.00');
     expect(content).toContain('120.75');
+    expect(content).toContain('3,456.78');
     expect(content).toContain('En curso');
     expect(content).toContain('08:00 – 17:00');
+    expect(earnings.period).toHaveBeenCalledWith('TODAY');
     expect(earnings.period).toHaveBeenCalledWith('WEEK');
     expect(earnings.period).toHaveBeenCalledWith('MONTH');
+    expect(earnings.period).toHaveBeenCalledWith('ALL_TIME');
   });
 
   it('shows an explicit unavailable projection state without inventing an amount', () => {
@@ -83,6 +87,54 @@ describe('DashboardPageComponent', () => {
 
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('No se ha podido cargar el resumen semanal');
+    expect(content).toContain('120.75');
+  });
+
+  it('keeps the other periods visible when TODAY fails', () => {
+    mockAvailableDashboard();
+    earnings.period.mockImplementation((context: string) => context === 'TODAY'
+      ? throwError(() => new HttpErrorResponse({ status: 500 }))
+      : of(period(context, periodAmount(context))));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No se ha podido cargar el resumen de hoy');
+    expect(content).toContain('50.00');
+    expect(content).toContain('120.75');
+    expect(content).toContain('3,456.78');
+  });
+
+  it('keeps the other periods visible when ALL_TIME fails', () => {
+    mockAvailableDashboard();
+    earnings.period.mockImplementation((context: string) => context === 'ALL_TIME'
+      ? throwError(() => new HttpErrorResponse({ status: 500 }))
+      : of(period(context, periodAmount(context))));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No se ha podido cargar el acumulado histórico');
+    expect(content).toContain('10.11');
+    expect(content).toContain('50.00');
+    expect(content).toContain('120.75');
+  });
+
+  it('shows independent errors when TODAY and ALL_TIME are unavailable', () => {
+    mockAvailableDashboard();
+    earnings.period.mockImplementation((context: string) => ['TODAY', 'ALL_TIME'].includes(context)
+      ? throwError(() => new HttpErrorResponse({ status: 0 }))
+      : of(period(context, periodAmount(context))));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No se puede conectar con WorkWorth para cargar el resumen de hoy');
+    expect(content).toContain('No se puede conectar con WorkWorth para cargar el acumulado histórico');
+    expect(content).toContain('50.00');
     expect(content).toContain('120.75');
   });
 
@@ -133,7 +185,7 @@ describe('DashboardPageComponent', () => {
       amount: 12.5, currencyCode: 'EUR', unavailableReason: null,
       ...projectionOverride
     }));
-    earnings.period.mockImplementation((context: string) => of(period(context, context === 'WEEK' ? 50 : 120.75)));
+    earnings.period.mockImplementation((context: string) => of(period(context, periodAmount(context))));
     workdays.current.mockReturnValue(of(workday('ACTIVE')));
   }
 
@@ -145,6 +197,15 @@ describe('DashboardPageComponent', () => {
       amount,
       currencyCode: 'EUR'
     };
+  }
+
+  function periodAmount(context: string): number {
+    return {
+      TODAY: 10.11,
+      WEEK: 50,
+      MONTH: 120.75,
+      ALL_TIME: 3456.78
+    }[context] ?? 0;
   }
 
   function workday(status: string) {

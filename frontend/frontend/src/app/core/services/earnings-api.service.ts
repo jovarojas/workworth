@@ -19,7 +19,7 @@ export class EarningsApiService {
     );
   }
 
-  period(context: Extract<EarningPeriod, 'WEEK' | 'MONTH'>): Observable<EarningPeriodResponse> {
+  period(context: EarningPeriod): Observable<EarningPeriodResponse> {
     return this.http.get<EarningPeriodResponse>(`${this.apiBaseUrl}/earnings/periods/${context}`);
   }
 }

@@ -32,4 +32,18 @@ describe('EarningsApiService', () => {
       amount: 0, currencyCode: 'EUR', unavailableReason: null
     });
   });
+
+  it.each(['TODAY', 'ALL_TIME'] as const)('requests the %s earning period from the configured API URL', (context) => {
+    service.period(context).subscribe();
+
+    const request = http.expectOne(`http://api.test/api/v1/earnings/periods/${context}`);
+    expect(request.request.method).toBe('GET');
+    request.flush({
+      context,
+      startDate: context === 'ALL_TIME' ? null : '2026-08-12',
+      endDate: context === 'ALL_TIME' ? null : '2026-08-12',
+      amount: 123.45,
+      currencyCode: 'EUR'
+    });
+  });
 });

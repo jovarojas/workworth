@@ -23,18 +23,24 @@ export class DashboardPageComponent implements OnInit {
   private pollingSubscription?: Subscription;
 
   readonly projection = signal<EarningProjectionResponse | null>(null);
+  readonly today = signal<EarningPeriodResponse | null>(null);
   readonly week = signal<EarningPeriodResponse | null>(null);
   readonly month = signal<EarningPeriodResponse | null>(null);
+  readonly allTime = signal<EarningPeriodResponse | null>(null);
   readonly workday = signal<WorkdayResponse | null>(null);
 
   readonly projectionLoading = signal(true);
+  readonly todayLoading = signal(true);
   readonly weekLoading = signal(true);
   readonly monthLoading = signal(true);
+  readonly allTimeLoading = signal(true);
   readonly workdayLoading = signal(true);
 
   readonly projectionError = signal<string | null>(null);
+  readonly todayError = signal<string | null>(null);
   readonly weekError = signal<string | null>(null);
   readonly monthError = signal<string | null>(null);
+  readonly allTimeError = signal<string | null>(null);
   readonly workdayError = signal<string | null>(null);
   readonly workdayMissing = signal(false);
 
@@ -46,8 +52,10 @@ export class DashboardPageComponent implements OnInit {
 
   load(showLoading = true): void {
     this.loadProjection(showLoading);
+    this.loadPeriod('TODAY', showLoading);
     this.loadPeriod('WEEK', showLoading);
     this.loadPeriod('MONTH', showLoading);
+    this.loadPeriod('ALL_TIME', showLoading);
     this.loadWorkday(showLoading);
   }
 
@@ -78,25 +86,27 @@ export class DashboardPageComponent implements OnInit {
       });
   }
 
-  private loadPeriod(context: 'WEEK' | 'MONTH', showLoading: boolean): void {
-    const loading = context === 'WEEK' ? this.weekLoading : this.monthLoading;
-    const response = context === 'WEEK' ? this.week : this.month;
-    const errorState = context === 'WEEK' ? this.weekError : this.monthError;
-    const label = context === 'WEEK' ? 'el resumen semanal' : 'el resumen mensual';
+  private loadPeriod(context: EarningPeriodResponse['context'], showLoading: boolean): void {
+    const periodState = {
+      TODAY: { loading: this.todayLoading, response: this.today, error: this.todayError, label: 'el resumen de hoy' },
+      WEEK: { loading: this.weekLoading, response: this.week, error: this.weekError, label: 'el resumen semanal' },
+      MONTH: { loading: this.monthLoading, response: this.month, error: this.monthError, label: 'el resumen mensual' },
+      ALL_TIME: { loading: this.allTimeLoading, response: this.allTime, error: this.allTimeError, label: 'el acumulado histórico' }
+    }[context];
 
     if (showLoading) {
-      loading.set(true);
+      periodState.loading.set(true);
     }
-    errorState.set(null);
+    periodState.error.set(null);
 
     this.earnings.period(context)
       .pipe(
         takeUntilDestroyed(this.destroyRef),
-        finalize(() => loading.set(false))
+        finalize(() => periodState.loading.set(false))
       )
       .subscribe({
-        next: (period) => response.set(period),
-        error: (error: unknown) => errorState.set(this.errorMessage(error, label))
+        next: (period) => periodState.response.set(period),
+        error: (error: unknown) => periodState.error.set(this.errorMessage(error, periodState.label))
       });
   }
 
