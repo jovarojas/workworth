@@ -8,10 +8,12 @@ import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.exception.SalaryProfileNotFoundException;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -41,12 +43,12 @@ public class SalaryProfileService {
         validateRequest(request);
 
         SalaryProfile profile = new SalaryProfile(
-                request.effectiveFrom(),
-                moneyOrNull(request.grossAnnual()),
-                moneyOrNull(request.netMonthlyReal()),
-                request.currencyCode(),
-                request.payPeriods(),
-                clock.instant());
+            request.effectiveFrom(),
+            moneyOrNull(request.grossAnnual()),
+            moneyOrNull(request.netMonthlyReal()),
+            request.currencyCode(),
+            request.payPeriods(),
+            clock.instant());
 
         return salaryProfileMapper.toResponse(salaryProfileRepository.save(profile));
     }
@@ -57,18 +59,18 @@ public class SalaryProfileService {
 
     public SalaryProfile findEffectiveProfile(YearMonth month) {
         return salaryProfileRepository.findTopByEffectiveFromLessThanEqualOrderByEffectiveFromDesc(month.atDay(1))
-                .orElseThrow(() -> new SalaryProfileNotFoundException(
-                        "No salary profile is effective for " + month + "."));
+            .orElseThrow(() -> new SalaryProfileNotFoundException(
+                "No salary profile is effective for " + month + "."));
     }
 
     public SalaryProfileHistoryResponse getHistory(int page, int size) {
         Page<SalaryProfile> profiles = salaryProfileRepository.findAllByOrderByEffectiveFromDesc(PageRequest.of(page, size));
         return new SalaryProfileHistoryResponse(
-                profiles.map(salaryProfileMapper::toResponse).getContent(),
-                profiles.getNumber(),
-                profiles.getSize(),
-                profiles.getTotalElements(),
-                profiles.getTotalPages());
+            profiles.map(salaryProfileMapper::toResponse).getContent(),
+            profiles.getNumber(),
+            profiles.getSize(),
+            profiles.getTotalElements(),
+            profiles.getTotalPages());
     }
 
     private void validateRequest(CreateSalaryProfileRequest request) {

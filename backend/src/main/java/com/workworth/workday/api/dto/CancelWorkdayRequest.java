@@ -1,2 +1,4 @@
 package com.workworth.workday.api.dto;
-public record CancelWorkdayRequest(String reason) { }
+
+public record CancelWorkdayRequest(String reason) {
+}

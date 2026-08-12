@@ -1,3 +1,57 @@
 package com.workworth.earnings.persistence;
-import com.workworth.earnings.domain.EarningCorrectionCause; import jakarta.persistence.*; import java.math.BigDecimal; import java.time.Instant; import lombok.Getter;
-@Getter @Entity @Table(name="earning_corrections") public class EarningCorrection { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="workday_earning_id",nullable=false) private WorkdayEarning earning; @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="previous_correction_id") private EarningCorrection previousCorrection; @Column(name="workday_time_correction_id",nullable=false,unique=true) private Long workdayTimeCorrectionId; @Column(nullable=false) private int sequence; @Enumerated(EnumType.STRING) @Column(nullable=false) private EarningCorrectionCause cause; @Column(name="previous_economic_seconds",nullable=false) private long previousEconomicSeconds; @Column(name="new_economic_seconds",nullable=false) private long newEconomicSeconds; @Column(name="previous_amount",precision=24,scale=12) private BigDecimal previousAmount; @Column(name="new_amount",precision=24,scale=12) private BigDecimal newAmount; @Column(name="corrected_at",nullable=false) private Instant correctedAt; protected EarningCorrection(){} public EarningCorrection(WorkdayEarning e,Long source,EarningCorrection previous,int sequence,EarningCorrectionCause cause,long oldSec,long newSec,BigDecimal oldAmount,BigDecimal newAmount,Instant at){earning=e;workdayTimeCorrectionId=source;previousCorrection=previous;this.sequence=sequence;this.cause=cause;previousEconomicSeconds=oldSec;newEconomicSeconds=newSec;previousAmount=oldAmount;this.newAmount=newAmount;correctedAt=at;} }
+
+import com.workworth.earnings.domain.EarningCorrectionCause;
+import jakarta.persistence.*;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+
+import lombok.Getter;
+
+@Getter
+@Entity
+@Table(name = "earning_corrections")
+public class EarningCorrection {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "workday_earning_id", nullable = false)
+    private WorkdayEarning earning;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "previous_correction_id")
+    private EarningCorrection previousCorrection;
+    @Column(name = "workday_time_correction_id", nullable = false, unique = true)
+    private Long workdayTimeCorrectionId;
+    @Column(nullable = false)
+    private int sequence;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EarningCorrectionCause cause;
+    @Column(name = "previous_economic_seconds", nullable = false)
+    private long previousEconomicSeconds;
+    @Column(name = "new_economic_seconds", nullable = false)
+    private long newEconomicSeconds;
+    @Column(name = "previous_amount", precision = 24, scale = 12)
+    private BigDecimal previousAmount;
+    @Column(name = "new_amount", precision = 24, scale = 12)
+    private BigDecimal newAmount;
+    @Column(name = "corrected_at", nullable = false)
+    private Instant correctedAt;
+
+    protected EarningCorrection() {
+    }
+
+    public EarningCorrection(WorkdayEarning e, Long source, EarningCorrection previous, int sequence, EarningCorrectionCause cause, long oldSec, long newSec, BigDecimal oldAmount, BigDecimal newAmount, Instant at) {
+        earning = e;
+        workdayTimeCorrectionId = source;
+        previousCorrection = previous;
+        this.sequence = sequence;
+        this.cause = cause;
+        previousEconomicSeconds = oldSec;
+        newEconomicSeconds = newSec;
+        previousAmount = oldAmount;
+        this.newAmount = newAmount;
+        correctedAt = at;
+    }
+}

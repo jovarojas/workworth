@@ -5,11 +5,13 @@ import com.workworth.earnings.persistence.EarningCorrection;
 import com.workworth.earnings.persistence.EarningCorrectionRepository;
 import com.workworth.earnings.persistence.WorkdayEarning;
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
@@ -26,7 +28,7 @@ public class EarningQueryService {
 
     public EffectiveEarning byDate(LocalDate date) {
         WorkdayEarning earning = earnings.findByLocalDate(date)
-                .orElseThrow(() -> new EarningNotFoundException("No earning exists for this workday."));
+            .orElseThrow(() -> new EarningNotFoundException("No earning exists for this workday."));
         return new EffectiveEarning(earning, latestCorrection(earning.getId()));
     }
 
@@ -34,15 +36,15 @@ public class EarningQueryService {
         var result = earnings.findAllByOrderByLocalDateDesc(PageRequest.of(page, size));
         Map<Long, EarningCorrection> latestCorrections = latestCorrections(result.getContent());
         List<EffectiveEarning> items = result.getContent().stream()
-                .map(earning -> new EffectiveEarning(earning, latestCorrections.get(earning.getId())))
-                .toList();
+            .map(earning -> new EffectiveEarning(earning, latestCorrections.get(earning.getId())))
+            .toList();
         return new EarningHistoryPage(items, result.getNumber(), result.getSize(), result.getTotalElements(),
-                result.getTotalPages(), result.hasNext(), result.hasPrevious());
+            result.getTotalPages(), result.hasNext(), result.hasPrevious());
     }
 
     public List<EarningCorrection> corrections(LocalDate date) {
         WorkdayEarning earning = earnings.findByLocalDate(date)
-                .orElseThrow(() -> new EarningNotFoundException("No earning exists for this workday."));
+            .orElseThrow(() -> new EarningNotFoundException("No earning exists for this workday."));
         return corrections.findByEarningIdOrderBySequenceDesc(earning.getId());
     }
 
@@ -56,9 +58,9 @@ public class EarningQueryService {
             return Map.of();
         }
         return corrections.findByEarningIdInOrderByEarningIdAscSequenceDesc(earningIds).stream()
-                .collect(java.util.stream.Collectors.toMap(
-                        correction -> correction.getEarning().getId(),
-                        Function.identity(),
-                        (first, ignored) -> first));
+            .collect(java.util.stream.Collectors.toMap(
+                correction -> correction.getEarning().getId(),
+                Function.identity(),
+                (first, ignored) -> first));
     }
 }

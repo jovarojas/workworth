@@ -8,8 +8,10 @@ import com.workworth.workday.exception.WorkdayConflictException;
 import com.workworth.workday.exception.WorkdayIntervalValidationException;
 import com.workworth.workday.exception.WorkdayNotFoundException;
 import com.workworth.earnings.exception.EarningNotFoundException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -24,7 +26,7 @@ public class GlobalExceptionHandler {
     ProblemDetail handleValidation(MethodArgumentNotValidException exception) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         exception.getBindingResult().getFieldErrors()
-                .forEach(error -> fieldErrors.put(error.getField(), error.getDefaultMessage()));
+            .forEach(error -> fieldErrors.put(error.getField(), error.getDefaultMessage()));
 
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed.");
         problem.setTitle("Validation error");
@@ -36,7 +38,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
         return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR,
-                "Request parameter has an invalid value.");
+            "Request parameter has an invalid value.");
     }
 
     @ExceptionHandler(SalaryProfileNotFoundException.class)
@@ -57,13 +59,33 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SalaryConfigurationIncompleteException.class)
     ProblemDetail handleIncompleteConfiguration(SalaryConfigurationIncompleteException exception) {
         return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.SALARY_CONFIGURATION_INCOMPLETE,
-                exception.getMessage());
+            exception.getMessage());
     }
-    @ExceptionHandler(WorkdayNotFoundException.class) ProblemDetail handleWorkdayNotFound(WorkdayNotFoundException e) { return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage()); }
-    @ExceptionHandler(WorkdayConflictException.class) ProblemDetail handleWorkdayConflict(WorkdayConflictException e) { return problem(HttpStatus.CONFLICT, ApiErrorCode.WORKDAY_CONFLICT, e.getMessage()); }
-    @ExceptionHandler(WorkdayIntervalValidationException.class) ProblemDetail handleWorkdayInterval(WorkdayIntervalValidationException e) { return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.WORKDAY_INTERVAL_INVALID, e.getMessage()); }
-    @ExceptionHandler(EarningNotFoundException.class) ProblemDetail handleEarningNotFound(EarningNotFoundException e) { return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage()); }
-    @ExceptionHandler(IllegalArgumentException.class) ProblemDetail handleIllegalArgument(IllegalArgumentException e) { return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, e.getMessage()); }
+
+    @ExceptionHandler(WorkdayNotFoundException.class)
+    ProblemDetail handleWorkdayNotFound(WorkdayNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(WorkdayConflictException.class)
+    ProblemDetail handleWorkdayConflict(WorkdayConflictException e) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.WORKDAY_CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(WorkdayIntervalValidationException.class)
+    ProblemDetail handleWorkdayInterval(WorkdayIntervalValidationException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.WORKDAY_INTERVAL_INVALID, e.getMessage());
+    }
+
+    @ExceptionHandler(EarningNotFoundException.class)
+    ProblemDetail handleEarningNotFound(EarningNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail handleIllegalArgument(IllegalArgumentException e) {
+        return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, e.getMessage());
+    }
 
     private ProblemDetail problem(HttpStatus status, ApiErrorCode code, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);

@@ -9,8 +9,10 @@ import com.workworth.earnings.application.ActiveEarningProjectionService;
 import com.workworth.earnings.application.EarningPeriodService;
 import com.workworth.earnings.application.EarningQueryService;
 import com.workworth.earnings.domain.EarningPeriod;
+
 import java.time.LocalDate;
 import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -50,7 +52,7 @@ public class EarningsController {
 
     @GetMapping("/history")
     public ResponseEntity<EarningHistoryResponse> history(@RequestParam(defaultValue = "0") int page,
-                                                           @RequestParam(defaultValue = "20") int size) {
+                                                          @RequestParam(defaultValue = "20") int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw new IllegalArgumentException("Invalid pagination parameters.");
         }

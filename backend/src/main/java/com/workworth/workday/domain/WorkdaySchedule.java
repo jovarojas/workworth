@@ -15,13 +15,13 @@ public record WorkdaySchedule(ScheduleVariant variant, LocalTime start, LocalTim
         }
         if (date.getMonthValue() == 7 || date.getMonthValue() == 8) {
             return Optional.of(new WorkdaySchedule(ScheduleVariant.SUMMER, LocalTime.of(8, 0),
-                    LocalTime.of(15, 0), Duration.ofHours(7)));
+                LocalTime.of(15, 0), Duration.ofHours(7)));
         }
         if (date.getDayOfWeek() == DayOfWeek.FRIDAY) {
             return Optional.of(new WorkdaySchedule(ScheduleVariant.NORMAL, LocalTime.of(8, 0),
-                    LocalTime.of(15, 0), Duration.ofHours(7)));
+                LocalTime.of(15, 0), Duration.ofHours(7)));
         }
         return Optional.of(new WorkdaySchedule(ScheduleVariant.NORMAL, LocalTime.of(8, 0),
-                LocalTime.of(17, 0), Duration.ofHours(8)));
+            LocalTime.of(17, 0), Duration.ofHours(8)));
     }
 }

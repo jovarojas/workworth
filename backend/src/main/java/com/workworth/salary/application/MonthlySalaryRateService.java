@@ -7,9 +7,11 @@ import com.workworth.salary.domain.MonthlySalaryRate;
 import com.workworth.salary.exception.SalaryConfigurationIncompleteException;
 import com.workworth.salary.exception.SalaryRateUnavailableException;
 import com.workworth.salary.persistence.SalaryProfile;
+
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.YearMonth;
+
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -32,13 +34,13 @@ public class MonthlySalaryRateService {
         SalaryProfile profile = salaryProfileService.findEffectiveProfile(month);
         if (profile.getNetMonthlyReal() == null) {
             throw new SalaryConfigurationIncompleteException(
-                    "A real monthly net income is required until a fiscal estimator is implemented.");
+                "A real monthly net income is required until a fiscal estimator is implemented.");
         }
 
         StandardEconomicHoursProvider provider = standardEconomicHoursProvider.getIfAvailable();
         if (provider == null) {
             throw new SalaryRateUnavailableException(
-                    "The standard work calendar is not available until SPEC 002 is implemented.");
+                "The standard work calendar is not available until SPEC 002 is implemented.");
         }
 
         BigDecimal standardHours = provider.getStandardEconomicHours(month, clock.getZone());
@@ -47,17 +49,17 @@ public class MonthlySalaryRateService {
         }
 
         BigDecimal hourlyRate = profile.getNetMonthlyReal()
-                .divide(standardHours, MoneyRounding.RATE_SCALE, MoneyRounding.ROUNDING_MODE);
+            .divide(standardHours, MoneyRounding.RATE_SCALE, MoneyRounding.ROUNDING_MODE);
 
         return new MonthlySalaryRate(
-                month,
-                profile.getId(),
-                IncomeSource.NET_MONTHLY_REAL,
-                profile.getNetMonthlyReal(),
-                profile.getNetMonthlyReal().multiply(BigDecimal.valueOf(profile.getPayPeriods())),
-                profile.getPayPeriods(),
-                standardHours,
-                hourlyRate,
-                profile.getCurrencyCode());
+            month,
+            profile.getId(),
+            IncomeSource.NET_MONTHLY_REAL,
+            profile.getNetMonthlyReal(),
+            profile.getNetMonthlyReal().multiply(BigDecimal.valueOf(profile.getPayPeriods())),
+            profile.getPayPeriods(),
+            standardHours,
+            hourlyRate,
+            profile.getCurrencyCode());
     }
 }

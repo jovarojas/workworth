@@ -1,6 +1,7 @@
 package com.workworth.salary.estimation;
 
 import java.util.Optional;
+
 import org.springframework.stereotype.Component;
 
 @Component

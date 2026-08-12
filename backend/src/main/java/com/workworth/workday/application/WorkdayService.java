@@ -78,7 +78,7 @@ public class WorkdayService {
         if (d.getStatus() != WorkdayStatus.COMPLETED)
             throw new WorkdayConflictException("Historical meal breaks can only be amended on completed workdays.");
         MealBreak b = breaks.findById(id).filter(x -> x.getWorkday().getId().equals(d.getId()))
-                .orElseThrow(() -> new WorkdayNotFoundException("Meal break not found."));
+            .orElseThrow(() -> new WorkdayNotFoundException("Meal break not found."));
         if (b.getEndedAt() == null) throw new WorkdayConflictException("An open meal break cannot be amended.");
         if (b.getStartedAt().equals(start) && b.getEndedAt().equals(end)) return b;
 
@@ -160,11 +160,11 @@ public class WorkdayService {
         if (start.isBefore(at(d, d.getScheduledStart())) || end.isAfter(at(d, d.getScheduledEnd())))
             throw new WorkdayIntervalValidationException("Interval must be inside the scheduled window.");
         boolean overlap = breaks.findByWorkdayIdOrderByStartedAt(d.getId()).stream().anyMatch(x ->
-                (ignoredMealBreakId == null || !java.util.Objects.equals(x.getId(), ignoredMealBreakId))
-                        && overlaps(start, end, x.getStartedAt(), x.getEndedAt() == null ? at(d, d.getScheduledEnd()) : x.getEndedAt()))
-                || absences.findByWorkdayIdOrderByStartedAt(d.getId()).stream().anyMatch(x ->
-                (ignoredAbsenceId == null || !java.util.Objects.equals(x.getId(), ignoredAbsenceId))
-                        && overlaps(start, end, x.getStartedAt(), x.getEndedAt()));
+            (ignoredMealBreakId == null || !java.util.Objects.equals(x.getId(), ignoredMealBreakId))
+                && overlaps(start, end, x.getStartedAt(), x.getEndedAt() == null ? at(d, d.getScheduledEnd()) : x.getEndedAt()))
+            || absences.findByWorkdayIdOrderByStartedAt(d.getId()).stream().anyMatch(x ->
+            (ignoredAbsenceId == null || !java.util.Objects.equals(x.getId(), ignoredAbsenceId))
+                && overlaps(start, end, x.getStartedAt(), x.getEndedAt()));
         if (overlap) throw new WorkdayIntervalValidationException("Workday intervals cannot overlap.");
     }
 
@@ -184,10 +184,10 @@ public class WorkdayService {
     }
 
     private void recordMealBreakAmendment(Workday d, long before, long after, MealBreak mealBreak,
-                                           Instant previousStart, Instant previousEnd, boolean previouslyAutomatic) {
+                                          Instant previousStart, Instant previousEnd, boolean previouslyAutomatic) {
         WorkdayTimeCorrection correction = corrections.save(new WorkdayTimeCorrection(
-                d, before, after, clock.instant(), mealBreak, previousStart, previousEnd,
-                previouslyAutomatic, mealBreak.getStartedAt(), mealBreak.getEndedAt()));
+            d, before, after, clock.instant(), mealBreak, previousStart, previousEnd,
+            previouslyAutomatic, mealBreak.getStartedAt(), mealBreak.getEndedAt()));
         events.publishEvent(new WorkdayTimeCorrectionRegisteredEvent(correction.getId()));
     }
 }
