@@ -125,6 +125,55 @@
   color: #b42318;
 }
 
+.workday-absence-form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1rem;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+  border: 1px solid #e1e5ee;
+  border-radius: 1rem;
+  background: #fff;
+
+  h2,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    margin-bottom: .35rem;
+    font-size: 1.25rem;
+  }
+
+  p {
+    color: #56627a;
+  }
+}
+
+.workday-absence-form__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.workday-absence-form__reason {
+  grid-column: 1 / -1;
+}
+
+.workday-absence-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.workday-action-error {
+  margin: 0;
+  color: #b42318 !important;
+}
+
 .workday-refresh-error {
   margin: 0 0 1rem;
   border-radius: .75rem;
@@ -157,6 +206,18 @@
   }
 
   .workday-actions__buttons button {
+    width: 100%;
+  }
+
+  .workday-absence-form__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .workday-absence-form__reason {
+    grid-column: auto;
+  }
+
+  .workday-absence-form__actions button {
     width: 100%;
   }
 }

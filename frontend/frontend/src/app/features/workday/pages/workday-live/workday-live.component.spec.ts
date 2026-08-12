@@ -10,7 +10,8 @@ describe('WorkdayLiveComponent', () => {
     current: vi.fn(),
     startMealBreak: vi.fn(),
     endMealBreak: vi.fn(),
-    cancel: vi.fn()
+    cancel: vi.fn(),
+    createPartialAbsence: vi.fn()
   };
 
   beforeEach(async () => {
@@ -318,6 +319,104 @@ describe('WorkdayLiveComponent', () => {
 
     expect(fixture.nativeElement.textContent).not.toContain('Iniciar jornada');
     expect(fixture.nativeElement.textContent).not.toContain('Finalizar jornada');
+  });
+
+  it.each(['SCHEDULED', 'ACTIVE', 'ON_MEAL_BREAK', 'COMPLETED'] as const)(
+    'offers partial absence registration for a %s workday',
+    (status) => {
+      workdays.current.mockReturnValue(of(workday(status)));
+
+      const fixture = createComponent();
+
+      expect(fixture.nativeElement.querySelector('[data-testid="show-partial-absence-form"]')).not.toBeNull();
+    }
+  );
+
+  it('does not offer partial absence registration for a cancelled workday', () => {
+    workdays.current.mockReturnValue(of(workday('CANCELLED')));
+
+    const fixture = createComponent();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="show-partial-absence-form"]')).toBeNull();
+  });
+
+  it('serializes the form interval in the workday zone, creates the absence, and refreshes from the backend', () => {
+    const absence = {
+      id: 31,
+      startedAt: '2026-08-12T08:30:00.000Z',
+      endedAt: '2026-08-12T09:15:00.000Z',
+      reason: 'Cita médica'
+    };
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(of(workday('ACTIVE', { partialAbsences: [absence] })));
+    workdays.createPartialAbsence.mockReturnValue(of(absence));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="show-partial-absence-form"]');
+    fixture.componentInstance.absenceForm.setValue({
+      startedAt: '10:30',
+      endedAt: '11:15',
+      reason: 'Cita médica'
+    });
+    fixture.componentInstance.createPartialAbsence(fixture.componentInstance.workday()!);
+    fixture.detectChanges();
+
+    expect(workdays.createPartialAbsence).toHaveBeenCalledWith('2026-08-12', {
+      startedAt: '2026-08-12T08:30:00.000Z',
+      endedAt: '2026-08-12T09:15:00.000Z',
+      reason: 'Cita médica'
+    });
+    expect(workdays.current).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.workday()?.partialAbsences).toEqual([absence]);
+    expect(fixture.nativeElement.querySelector('[data-testid="submit-partial-absence"]')).toBeNull();
+  });
+
+  it('does not send an invalid local interval to the backend', () => {
+    workdays.current.mockReturnValue(of(workday('ACTIVE')));
+
+    const fixture = createComponent();
+    fixture.componentInstance.showAbsenceForm();
+    fixture.componentInstance.absenceForm.setValue({ startedAt: '12:00', endedAt: '12:00', reason: '' });
+    fixture.componentInstance.createPartialAbsence(fixture.componentInstance.workday()!);
+    fixture.detectChanges();
+
+    expect(workdays.createPartialAbsence).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('La hora de inicio debe ser anterior a la hora de fin.');
+  });
+
+  it('keeps the backend workday visible when absence creation is rejected', () => {
+    workdays.current.mockReturnValue(of(workday('ACTIVE')));
+    workdays.createPartialAbsence.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 422,
+      error: { code: 'WORKDAY_INTERVAL_INVALID', detail: 'El intervalo se solapa con una pausa.' }
+    })));
+
+    const fixture = createComponent();
+    fixture.componentInstance.showAbsenceForm();
+    fixture.componentInstance.absenceForm.setValue({ startedAt: '10:00', endedAt: '11:00', reason: '' });
+    fixture.componentInstance.createPartialAbsence(fixture.componentInstance.workday()!);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('El intervalo se solapa con una pausa.');
+    expect(fixture.nativeElement.textContent).toContain('Jornada activa');
+  });
+
+  it('prevents a duplicate partial absence submission while the request is in progress', () => {
+    const pending = new Subject();
+    workdays.current.mockReturnValue(of(workday('ACTIVE')));
+    workdays.createPartialAbsence.mockReturnValue(pending);
+
+    const fixture = createComponent();
+    fixture.componentInstance.showAbsenceForm();
+    fixture.componentInstance.absenceForm.setValue({ startedAt: '10:00', endedAt: '11:00', reason: '' });
+    const currentWorkday = fixture.componentInstance.workday()!;
+    fixture.componentInstance.createPartialAbsence(currentWorkday);
+    fixture.componentInstance.createPartialAbsence(currentWorkday);
+
+    expect(workdays.createPartialAbsence).toHaveBeenCalledTimes(1);
+
+    pending.complete();
   });
 
   it.each(['SCHEDULED', 'ACTIVE', 'ON_MEAL_BREAK'] as const)('polls after sixty seconds for %s workdays', (status) => {

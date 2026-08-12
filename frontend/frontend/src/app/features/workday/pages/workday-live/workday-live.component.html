@@ -110,7 +110,79 @@
             Hoy no trabajo
           </button>
         }
+
+        @if (canCreatePartialAbsence()) {
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="show-partial-absence-form"
+            [disabled]="actionInProgress() !== null"
+            (click)="showAbsenceForm()">
+            Registrar ausencia parcial
+          </button>
+        }
       </div>
     </section>
+
+    @if (canCreatePartialAbsence() && absenceFormVisible()) {
+      <form
+        class="workday-absence-form"
+        [formGroup]="absenceForm"
+        (ngSubmit)="createPartialAbsence(currentWorkday)"
+        novalidate>
+        <div>
+          <h2>Registrar ausencia parcial</h2>
+          <p>Indica el intervalo de ausencia en la zona horaria {{ currentWorkday.timeZone }}.</p>
+        </div>
+
+        <div class="workday-absence-form__fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Inicio</mat-label>
+            <input matInput type="time" formControlName="startedAt" required />
+            @if (absenceControlError('startedAt'); as errorMessage) {
+              <mat-error>{{ errorMessage }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Fin</mat-label>
+            <input matInput type="time" formControlName="endedAt" required />
+            @if (absenceControlError('endedAt'); as errorMessage) {
+              <mat-error>{{ errorMessage }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="workday-absence-form__reason">
+            <mat-label>Motivo (opcional)</mat-label>
+            <input matInput type="text" formControlName="reason" maxlength="500" />
+            @if (absenceControlError('reason'); as errorMessage) {
+              <mat-error>{{ errorMessage }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        @if (absenceFormError(); as errorMessage) {
+          <p class="workday-action-error" role="alert">{{ errorMessage }}</p>
+        }
+
+        <div class="workday-absence-form__actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            data-testid="submit-partial-absence"
+            [disabled]="actionInProgress() !== null">
+            Guardar ausencia
+          </button>
+          <button
+            mat-button
+            type="button"
+            [disabled]="actionInProgress() !== null"
+            (click)="hideAbsenceForm()">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    }
   }
 </main>

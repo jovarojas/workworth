@@ -4,16 +4,29 @@ import { Component, DestroyRef, OnDestroy, OnInit, computed, inject, signal } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize, Observable, Subscription, timer } from 'rxjs';
 import { problemDetailFrom } from '../../../../core/http/problem-detail';
 import { MealBreakResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
 import { WorkdayApiService } from '../../../../core/services/workday-api.service';
+import { WorkdayIntervalSerializationError, serializeWorkdayInterval } from '../../serializers/workday-interval.serializer';
 
 @Component({
   selector: 'app-workday-live',
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule
+  ],
   templateUrl: './workday-live.component.html',
   styleUrl: './workday-live.component.scss'
 })
@@ -26,11 +39,24 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly missing = signal(false);
-  readonly actionInProgress = signal<'start-meal-break' | 'end-meal-break' | 'cancel' | null>(null);
+  readonly actionInProgress = signal<'start-meal-break' | 'end-meal-break' | 'cancel' | 'create-partial-absence' | null>(null);
   readonly actionError = signal<string | null>(null);
+  readonly absenceFormVisible = signal(false);
+  readonly absenceSubmitted = signal(false);
+  readonly absenceFormError = signal<string | null>(null);
   readonly openMealBreak = computed<MealBreakResponse | null>(() =>
     this.workday()?.mealBreaks.find((mealBreak) => mealBreak.endedAt === null) ?? null
   );
+  readonly canCreatePartialAbsence = computed(() => {
+    const status = this.workday()?.status;
+    return status === 'SCHEDULED' || status === 'ACTIVE' || status === 'ON_MEAL_BREAK' || status === 'COMPLETED';
+  });
+
+  readonly absenceForm = new FormGroup({
+    startedAt: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)] }),
+    endedAt: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^([01]\d|2[0-3]):[0-5]\d$/)] }),
+    reason: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] })
+  });
 
   ngOnInit(): void {
     this.load();
@@ -109,6 +135,75 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
     this.runAction('cancel', this.workdays.cancel(workday.localDate));
   }
 
+  showAbsenceForm(): void {
+    this.absenceFormVisible.set(true);
+    this.absenceFormError.set(null);
+    this.actionError.set(null);
+  }
+
+  hideAbsenceForm(): void {
+    if (this.actionInProgress()) {
+      return;
+    }
+    this.resetAbsenceForm();
+  }
+
+  private resetAbsenceForm(): void {
+    this.absenceFormVisible.set(false);
+    this.absenceSubmitted.set(false);
+    this.absenceFormError.set(null);
+    this.absenceForm.reset();
+  }
+
+  createPartialAbsence(workday: WorkdayResponse): void {
+    this.absenceSubmitted.set(true);
+    this.absenceFormError.set(null);
+    this.actionError.set(null);
+
+    if (this.actionInProgress() || this.absenceForm.invalid) {
+      this.absenceForm.markAllAsTouched();
+      return;
+    }
+
+    const value = this.absenceForm.getRawValue();
+    if (value.startedAt >= value.endedAt) {
+      this.absenceFormError.set('La hora de inicio debe ser anterior a la hora de fin.');
+      return;
+    }
+
+    try {
+      const interval = serializeWorkdayInterval(workday.localDate, value.startedAt, value.endedAt, workday.timeZone);
+      this.runAction(
+        'create-partial-absence',
+        this.workdays.createPartialAbsence(workday.localDate, { ...interval, reason: value.reason || null }),
+        () => this.resetAbsenceForm()
+      );
+    } catch (error) {
+      this.absenceFormError.set(
+        error instanceof WorkdayIntervalSerializationError
+          ? error.message
+          : 'No se ha podido preparar la ausencia.'
+      );
+    }
+  }
+
+  absenceControlError(controlName: 'startedAt' | 'endedAt' | 'reason'): string | null {
+    const control = this.absenceForm.controls[controlName];
+    if (!this.absenceSubmitted() && !control.touched) {
+      return null;
+    }
+    if (control.hasError('required')) {
+      return 'Este campo es obligatorio.';
+    }
+    if (control.hasError('pattern')) {
+      return 'Introduce una hora válida.';
+    }
+    if (control.hasError('maxlength')) {
+      return 'El motivo no puede superar 500 caracteres.';
+    }
+    return null;
+  }
+
   private configurePolling(status: WorkdayStatus): void {
     if (!this.isDynamicStatus(status)) {
       this.stopPolling();
@@ -134,8 +229,9 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
   }
 
   private runAction(
-    action: 'start-meal-break' | 'end-meal-break' | 'cancel',
-    request: Observable<unknown>
+    action: 'start-meal-break' | 'end-meal-break' | 'cancel' | 'create-partial-absence',
+    request: Observable<unknown>,
+    onSuccess?: () => void
   ): void {
     this.actionInProgress.set(action);
     this.actionError.set(null);
@@ -146,7 +242,10 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
         finalize(() => this.actionInProgress.set(null))
       )
       .subscribe({
-        next: () => this.load(false),
+        next: () => {
+          onSuccess?.();
+          this.load(false);
+        },
         error: (error: unknown) => {
           this.actionError.set(this.actionErrorMessage(error));
           if (problemDetailFrom(error)?.code === 'WORKDAY_CONFLICT') {

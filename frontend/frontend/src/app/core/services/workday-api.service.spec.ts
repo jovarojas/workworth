@@ -58,6 +58,20 @@ describe('WorkdayApiService', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
   });
 
+  it('creates a partial absence with the exact persisted interval contract', () => {
+    const absence = {
+      startedAt: '2026-08-12T08:30:00.000Z',
+      endedAt: '2026-08-12T09:15:00.000Z',
+      reason: 'Cita médica'
+    };
+    service.createPartialAbsence('2026-08-12', absence).subscribe();
+
+    const request = http.expectOne(`${apiBaseUrl}/workdays/2026-08-12/partial-absences`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(absence);
+    request.flush({ id: 14, ...absence });
+  });
+
   function workdayResponse() {
     return {
       id: 1,

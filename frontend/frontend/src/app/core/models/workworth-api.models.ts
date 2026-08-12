@@ -96,6 +96,12 @@ export interface PartialAbsenceResponse {
   reason: string | null;
 }
 
+export interface CreatePartialAbsenceRequest {
+  startedAt: string;
+  endedAt: string;
+  reason?: string | null;
+}
+
 export interface WorkdayResponse {
   id: number;
   localDate: string;
