@@ -174,6 +174,98 @@ describe('WorkdayLiveComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No hay jornada para hoy');
   });
 
+  it('shows an initial GET error without a workday', () => {
+    workdays.current.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+    const fixture = createComponent();
+
+    expect(fixture.nativeElement.textContent).toContain('No se ha podido cargar la jornada actual');
+    expect(fixture.nativeElement.textContent).not.toContain('Jornada activa');
+  });
+
+  it('preserves the current workday when the refresh after starting a meal break fails', () => {
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 0 })));
+    workdays.startMealBreak.mockReturnValue(of(openMealBreak(10)));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="start-meal-break"]');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Jornada activa');
+    expect(fixture.nativeElement.textContent).toContain('No se puede conectar con WorkWorth');
+  });
+
+  it('preserves the current workday when the refresh after ending a meal break fails', () => {
+    const mealBreak = openMealBreak(10);
+    workdays.current
+      .mockReturnValueOnce(of(workday('ON_MEAL_BREAK', { mealBreaks: [mealBreak] })))
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+    workdays.endMealBreak.mockReturnValue(of(closedMealBreak(10)));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="end-meal-break"]');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('En pausa');
+    expect(fixture.nativeElement.textContent).toContain('No se ha podido cargar la jornada actual');
+  });
+
+  it('preserves the current workday when the refresh after cancellation fails', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 500 })));
+    workdays.cancel.mockReturnValue(of(void 0));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="cancel-workday"]');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Jornada activa');
+    expect(fixture.nativeElement.textContent).toContain('No se ha podido cargar la jornada actual');
+  });
+
+  it('reconciles the current workday after a conflict', () => {
+    const mealBreak = openMealBreak(77);
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(of(workday('ON_MEAL_BREAK', { mealBreaks: [mealBreak] })));
+    workdays.startMealBreak.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: { code: 'WORKDAY_CONFLICT', detail: 'La pausa ya está abierta.' }
+    })));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="start-meal-break"]');
+    fixture.detectChanges();
+
+    expect(workdays.current).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.textContent).toContain('En pausa');
+    expect(fixture.nativeElement.textContent).toContain('La pausa ya está abierta.');
+    expect(fixture.nativeElement.querySelector('[data-testid="end-meal-break"]')).not.toBeNull();
+  });
+
+  it('preserves the current workday when reconciliation after a conflict fails', () => {
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 0 })));
+    workdays.startMealBreak.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 409,
+      error: { code: 'WORKDAY_CONFLICT', detail: 'La pausa ya está abierta.' }
+    })));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="start-meal-break"]');
+    fixture.detectChanges();
+
+    expect(workdays.current).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.textContent).toContain('Jornada activa');
+    expect(fixture.nativeElement.textContent).toContain('La pausa ya está abierta.');
+    expect(fixture.nativeElement.textContent).toContain('No se puede conectar con WorkWorth');
+  });
+
   it('keeps polling after a successful mutation while the workday remains dynamic', () => {
     vi.useFakeTimers();
     const mealBreak = openMealBreak(21);
@@ -188,6 +280,35 @@ describe('WorkdayLiveComponent', () => {
     vi.advanceTimersByTime(60_000);
 
     expect(workdays.current).toHaveBeenCalledTimes(3);
+  });
+
+  it('preserves the current workday when polling fails', () => {
+    vi.useFakeTimers();
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 0 })));
+
+    const fixture = createComponent();
+    vi.advanceTimersByTime(60_000);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Jornada activa');
+    expect(fixture.nativeElement.textContent).toContain('No se puede conectar con WorkWorth');
+  });
+
+  it('stops polling after a successful cancellation refreshes to CANCELLED', () => {
+    vi.useFakeTimers();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    workdays.current
+      .mockReturnValueOnce(of(workday('ACTIVE')))
+      .mockReturnValueOnce(of(workday('CANCELLED', { economicSeconds: 0 })));
+    workdays.cancel.mockReturnValue(of(void 0));
+
+    const fixture = createComponent();
+    click(fixture, '[data-testid="cancel-workday"]');
+    vi.advanceTimersByTime(60_000);
+
+    expect(workdays.current).toHaveBeenCalledTimes(2);
   });
 
   it('does not render manual workday start or completion actions', () => {

@@ -10,10 +10,10 @@
       <mat-spinner diameter="36" />
       <p>Cargando la jornada actual…</p>
     </section>
-  } @else if (error(); as errorMessage) {
+  } @else if (error() && !workday()) {
     <section class="feedback feedback--error" role="alert">
       <mat-icon aria-hidden="true">cloud_off</mat-icon>
-      <p>{{ errorMessage }}</p>
+      <p>{{ error() }}</p>
     </section>
   } @else if (missing()) {
     <section class="feedback" aria-live="polite">
@@ -22,6 +22,10 @@
       <p>WorkWorth no tiene una jornada estándar disponible para esta fecha.</p>
     </section>
   } @else if (workday(); as currentWorkday) {
+    @if (error(); as errorMessage) {
+      <p class="workday-refresh-error" role="alert">{{ errorMessage }}</p>
+    }
+
     <section class="status-panel" [class.status-panel--active]="currentWorkday.status === 'ACTIVE'" [class.status-panel--break]="currentWorkday.status === 'ON_MEAL_BREAK'" aria-labelledby="workday-status">
       <p class="eyebrow">ESTADO ACTUAL</p>
       <h2 id="workday-status">{{ statusLabel(currentWorkday.status) }}</h2>

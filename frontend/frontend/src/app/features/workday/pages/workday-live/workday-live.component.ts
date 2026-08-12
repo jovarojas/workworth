@@ -51,6 +51,7 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
   }
 
   load(showLoading = true): void {
+    const hasPreviousWorkday = this.workday() !== null;
     if (showLoading) {
       this.loading.set(true);
     }
@@ -68,6 +69,11 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
           this.configurePolling(workday.status);
         },
         error: (error: unknown) => {
+          if (!showLoading && hasPreviousWorkday) {
+            this.error.set(this.errorMessage(error));
+            return;
+          }
+
           this.workday.set(null);
           this.stopPolling();
           if (error instanceof HttpErrorResponse && error.status === 404) {
@@ -141,7 +147,12 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: () => this.load(false),
-        error: (error: unknown) => this.actionError.set(this.actionErrorMessage(error))
+        error: (error: unknown) => {
+          this.actionError.set(this.actionErrorMessage(error));
+          if (problemDetailFrom(error)?.code === 'WORKDAY_CONFLICT') {
+            this.load(false);
+          }
+        }
       });
   }
 
