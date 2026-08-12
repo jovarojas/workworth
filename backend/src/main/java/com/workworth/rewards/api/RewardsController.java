@@ -3,6 +3,7 @@ package com.workworth.rewards.api;
 import com.workworth.earnings.domain.EarningPeriod;
 import com.workworth.rewards.api.dto.CreateRewardRequest;
 import com.workworth.rewards.api.dto.RewardCombinationResponse;
+import com.workworth.rewards.api.dto.RewardCombinationRelevanceResponse;
 import com.workworth.rewards.api.dto.RewardEvaluationResponse;
 import com.workworth.rewards.api.dto.RewardRelevanceResponse;
 import com.workworth.rewards.api.dto.RewardResponse;
@@ -89,5 +90,10 @@ public class RewardsController {
         @RequestParam(required = false) Set<Long> excludeRewardIds) {
         return ResponseEntity.ok(RewardCombinationResponse.from(
             combinations.combination(context, excludeRewardIds == null ? Set.of() : excludeRewardIds)));
+    }
+
+    @GetMapping("/combinations/relevance")
+    public ResponseEntity<RewardCombinationRelevanceResponse> relevantCombination() {
+        return ResponseEntity.ok(RewardCombinationRelevanceResponse.from(combinations.relevantCombination()));
     }
 }

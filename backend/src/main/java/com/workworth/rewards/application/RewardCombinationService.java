@@ -34,13 +34,36 @@ public class RewardCombinationService {
     }
 
     public RewardCombination combination(EarningPeriod context, Set<Long> excludeRewardIds) {
+        return combination(context, pendingRewards(excludeRewardIds));
+    }
+
+    public RewardCombinationRelevance relevantCombination() {
+        List<Reward> pending = pendingRewards(Set.of());
+        boolean hasEvaluableContext = false;
+        for (EarningPeriod context : EarningPeriod.values()) {
+            RewardCombination combination = combination(context, pending);
+            if (!combination.evaluable()) {
+                continue;
+            }
+            hasEvaluableContext = true;
+            if (combination.rewards().size() >= 2) {
+                return new RewardCombinationRelevance(true, combination);
+            }
+        }
+        return new RewardCombinationRelevance(hasEvaluableContext, null);
+    }
+
+    private List<Reward> pendingRewards(Set<Long> excludeRewardIds) {
+        return rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING).stream()
+            .filter(reward -> !excludeRewardIds.contains(reward.getId()))
+            .toList();
+    }
+
+    private RewardCombination combination(EarningPeriod context, List<Reward> pending) {
         EarningPeriodSummary summary = periods.summarize(context);
         if (summary.status() == EarningStatus.UNAVAILABLE) {
             return new RewardCombination(context, false, null, null, applicationCurrency.currentCurrency().name(), List.of());
         }
-        List<Reward> pending = rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING).stream()
-            .filter(reward -> !excludeRewardIds.contains(reward.getId()))
-            .toList();
         for (Reward reward : pending) {
             if (!reward.getCurrencyCode().equals(applicationCurrency.currentCurrency().name())
                 || !reward.getCurrencyCode().equals(summary.currencyCode())) {

@@ -1,5 +1,6 @@
 package com.workworth.rewards.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,9 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.workworth.WorkWorthApplication;
+import com.workworth.earnings.domain.EarningStatus;
 import com.workworth.workday.application.WorkdayService;
 
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -167,5 +173,70 @@ class RewardsControllerIntegrationTest {
             .andExpect(jsonPath("$.outcome").value("SHORTFALL"))
             .andExpect(jsonPath("$.availableAmount").value(0.00))
             .andExpect(jsonPath("$.shortfall").value(1.00));
+    }
+
+    @Test
+    void returnsTheFirstRelevantCombinationOverHttpWithoutPersistingIt() throws Exception {
+        insertEarning(EarningStatus.AVAILABLE, new BigDecimal("90.00"));
+        createReward("Hamburguesas", 2, "30.00");
+        createReward("Funkos", 2, "60.00");
+        int rewardsBefore = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rewards", Integer.class);
+
+        mockMvc.perform(get("/api/v1/rewards/combinations/relevance"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.evaluable").value(true))
+            .andExpect(jsonPath("$.combination.context").value("TODAY"))
+            .andExpect(jsonPath("$.combination.rewards.length()").value(2))
+            .andExpect(jsonPath("$.combination.totalPrice").value(90.00));
+
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM rewards", Integer.class))
+            .isEqualTo(rewardsBefore);
+    }
+
+    @Test
+    void distinguishesEvaluableContextsWithoutACombinationOverHttp() throws Exception {
+        createReward("Hamburguesas", 2, "30.00");
+        createReward("Funkos", 2, "60.00");
+
+        mockMvc.perform(get("/api/v1/rewards/combinations/relevance"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.evaluable").value(true))
+            .andExpect(jsonPath("$.combination").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void distinguishesAllUnavailableContextsOverHttp() throws Exception {
+        insertEarning(EarningStatus.UNAVAILABLE, null);
+        createReward("Hamburguesas", 2, "30.00");
+        createReward("Funkos", 2, "60.00");
+
+        mockMvc.perform(get("/api/v1/rewards/combinations/relevance"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.evaluable").value(false))
+            .andExpect(jsonPath("$.combination").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    private void createReward(String name, int quantity, String price) throws Exception {
+        mockMvc.perform(post("/api/v1/rewards")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"%s\",\"quantity\":%d,\"price\":%s}".formatted(name, quantity, price)))
+            .andExpect(status().isCreated());
+    }
+
+    private void insertEarning(EarningStatus status, BigDecimal amount) {
+        LocalDate date = LocalDate.now(ZoneId.of("Europe/Madrid"));
+        Timestamp timestamp = Timestamp.from(Instant.now());
+        Long workdayId = jdbcTemplate.queryForObject("""
+            INSERT INTO workdays (local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
+                maximum_economic_seconds, status, created_at, updated_at)
+            VALUES (?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
+            RETURNING id
+            """, Long.class, date, timestamp, timestamp);
+        jdbcTemplate.update("""
+            INSERT INTO workday_earnings (workday_id, local_date, reference_month, status, economic_seconds,
+                raw_amount, materialized_at)
+            VALUES (?, ?, ?, ?, 0, ?, ?)
+            """, workdayId, date, date.withDayOfMonth(1).toString().substring(0, 7), status.name(), amount,
+            timestamp);
     }
 }
