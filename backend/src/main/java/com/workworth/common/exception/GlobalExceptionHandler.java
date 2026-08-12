@@ -5,6 +5,9 @@ import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.exception.SalaryProfileNotFoundException;
 import com.workworth.salary.exception.SalaryRateUnavailableException;
 import com.workworth.preferences.exception.ApplicationCurrencyLockedException;
+import com.workworth.rewards.exception.RewardConflictException;
+import com.workworth.rewards.exception.RewardCurrencyMismatchException;
+import com.workworth.rewards.exception.RewardNotFoundException;
 import com.workworth.workday.exception.WorkdayConflictException;
 import com.workworth.workday.exception.WorkdayIntervalValidationException;
 import com.workworth.workday.exception.WorkdayNotFoundException;
@@ -66,6 +69,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApplicationCurrencyLockedException.class)
     ProblemDetail handleApplicationCurrencyLocked(ApplicationCurrencyLockedException exception) {
         return problem(HttpStatus.CONFLICT, ApiErrorCode.APPLICATION_CURRENCY_LOCKED, exception.getMessage());
+    }
+
+    @ExceptionHandler(RewardNotFoundException.class)
+    ProblemDetail handleRewardNotFound(RewardNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(RewardConflictException.class)
+    ProblemDetail handleRewardConflict(RewardConflictException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.REWARD_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(RewardCurrencyMismatchException.class)
+    ProblemDetail handleRewardCurrencyMismatch(RewardCurrencyMismatchException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.REWARD_CURRENCY_MISMATCH, exception.getMessage());
     }
 
     @ExceptionHandler(WorkdayNotFoundException.class)
