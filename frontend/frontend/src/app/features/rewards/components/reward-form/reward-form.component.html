@@ -1,0 +1,31 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <mat-form-field appearance="outline">
+    <mat-label>Recompensa</mat-label>
+    <input matInput formControlName="name" autocomplete="off" />
+    @if (controlError('name'); as error) { <mat-error>{{ error }}</mat-error> }
+  </mat-form-field>
+
+  <div class="form-row">
+    <mat-form-field appearance="outline">
+      <mat-label>Cantidad</mat-label>
+      <input matInput type="number" min="1" step="1" formControlName="quantity" inputmode="numeric" />
+      @if (controlError('quantity'); as error) { <mat-error>{{ error }}</mat-error> }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Precio total</mat-label>
+      <input matInput formControlName="price" inputmode="decimal" autocomplete="off" />
+      <mat-hint>Máximo dos decimales.</mat-hint>
+      @if (controlError('price'); as error) { <mat-error>{{ error }}</mat-error> }
+    </mat-form-field>
+  </div>
+
+  <div class="actions">
+    <button mat-flat-button type="submit" [disabled]="saving">
+      @if (saving) { Guardando… } @else if (editing) { Guardar cambios } @else { Añadir recompensa }
+    </button>
+    @if (editing) {
+      <button mat-stroked-button type="button" [disabled]="saving" (click)="cancel()">Cancelar edición</button>
+    }
+  </div>
+</form>

@@ -37,5 +37,12 @@ export const routes: Routes = [
         .then((module) => module.EarningDetailComponent),
     title: 'Detalle de ganancia | WorkWorth'
   },
+  {
+    path: 'rewards',
+    loadComponent: () =>
+      import('./features/rewards/pages/rewards-page/rewards-page.component')
+        .then((module) => module.RewardsPageComponent),
+    title: 'Recompensas | WorkWorth'
+  },
   { path: '**', redirectTo: '' }
 ];
