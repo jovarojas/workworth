@@ -18,14 +18,14 @@
         <p>{{ errorMessage }}</p>
       </div>
     } @else if (projection(); as currentProjection) {
-      @if (isUnavailable()) {
+      @if (isUnavailable() || !currentProjection.currencyCode) {
         <h2 id="today-earning">No disponible</h2>
         <p class="hero__detail">
-          {{ currentProjection.unavailableReason || 'No existe una tarifa salarial válida para hoy.' }}
+          {{ currentProjection.unavailableReason || 'No hay una moneda disponible para la ganancia de hoy.' }}
         </p>
       } @else {
         <h2 id="today-earning">
-          {{ currentProjection.amount | currency:(currentProjection.currencyCode || 'EUR'):'symbol':'1.2-2' }}
+          {{ currentProjection.amount | currency:currentProjection.currencyCode:'symbol':'1.2-2' }} {{ currentProjection.currencyCode }}
         </h2>
         <p class="hero__detail">Ganancia neta proporcionada por WorkWorth para la jornada de hoy.</p>
       }
@@ -165,11 +165,11 @@
         } @else if (todayError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (today(); as todaySummary) {
-          @if (isPeriodUnavailable(todaySummary)) {
+          @if (isPeriodUnavailable(todaySummary) || !todaySummary.currencyCode) {
             <strong>No disponible</strong>
             <span class="summary-card__detail">No hay un importe evaluable para hoy</span>
           } @else {
-            <strong>{{ todaySummary.amount | currency:(todaySummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <strong>{{ todaySummary.amount | currency:todaySummary.currencyCode:'symbol':'1.2-2' }} {{ todaySummary.currencyCode }}</strong>
             <span class="summary-card__detail">Total registrado hoy</span>
           }
         }
@@ -184,11 +184,11 @@
         } @else if (weekError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (week(); as weekSummary) {
-          @if (isPeriodUnavailable(weekSummary)) {
+          @if (isPeriodUnavailable(weekSummary) || !weekSummary.currencyCode) {
             <strong>No disponible</strong>
             <span class="summary-card__detail">No hay un importe evaluable para esta semana</span>
           } @else {
-            <strong>{{ weekSummary.amount | currency:(weekSummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <strong>{{ weekSummary.amount | currency:weekSummary.currencyCode:'symbol':'1.2-2' }} {{ weekSummary.currencyCode }}</strong>
             <span class="summary-card__detail">Resumen semanal</span>
           }
         }
@@ -203,11 +203,11 @@
         } @else if (monthError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (month(); as monthSummary) {
-          @if (isPeriodUnavailable(monthSummary)) {
+          @if (isPeriodUnavailable(monthSummary) || !monthSummary.currencyCode) {
             <strong>No disponible</strong>
             <span class="summary-card__detail">No hay un importe evaluable para este mes</span>
           } @else {
-            <strong>{{ monthSummary.amount | currency:(monthSummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <strong>{{ monthSummary.amount | currency:monthSummary.currencyCode:'symbol':'1.2-2' }} {{ monthSummary.currencyCode }}</strong>
             <span class="summary-card__detail">Resumen mensual</span>
           }
         }
@@ -222,11 +222,11 @@
         } @else if (allTimeError(); as errorMessage) {
           <p class="card-feedback" role="alert">{{ errorMessage }}</p>
         } @else if (allTime(); as allTimeSummary) {
-          @if (isPeriodUnavailable(allTimeSummary)) {
+          @if (isPeriodUnavailable(allTimeSummary) || !allTimeSummary.currencyCode) {
             <strong>No disponible</strong>
             <span class="summary-card__detail">No hay un importe histórico evaluable</span>
           } @else {
-            <strong>{{ allTimeSummary.amount | currency:(allTimeSummary.currencyCode || 'EUR'):'symbol':'1.2-2' }}</strong>
+            <strong>{{ allTimeSummary.amount | currency:allTimeSummary.currencyCode:'symbol':'1.2-2' }} {{ allTimeSummary.currencyCode }}</strong>
             <span class="summary-card__detail">Ingresos netos registrados por WorkWorth</span>
           }
         }

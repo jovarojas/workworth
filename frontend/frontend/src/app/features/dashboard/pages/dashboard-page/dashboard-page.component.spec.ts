@@ -46,6 +46,7 @@ describe('DashboardPageComponent', () => {
     expect(content).toContain('50.00');
     expect(content).toContain('120.75');
     expect(content).toContain('3,456.78');
+    expect(content).toContain('EUR');
     expect(content).toContain('En curso');
     expect(content).toContain('08:00 – 17:00');
     expect(earnings.period).toHaveBeenCalledWith('TODAY');
@@ -53,6 +54,34 @@ describe('DashboardPageComponent', () => {
     expect(earnings.period).toHaveBeenCalledWith('MONTH');
     expect(earnings.period).toHaveBeenCalledWith('ALL_TIME');
     expect(dashboard.motivation).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses USD supplied by the backend for the projection and all period summaries', () => {
+    mockAvailableDashboard({ currencyCode: 'USD' });
+    earnings.period.mockImplementation((context: string) => of({
+      ...period(context, periodAmount(context)), currencyCode: 'USD'
+    }));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('USD');
+    expect(fixture.nativeElement.textContent).not.toContain('EUR');
+  });
+
+  it('does not invent EUR when an available response has no currency code', () => {
+    mockAvailableDashboard({ currencyCode: null });
+    earnings.period.mockImplementation((context: string) => of({
+      ...period(context, periodAmount(context)), currencyCode: null
+    }));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No hay una moneda disponible para la ganancia de hoy.');
+    expect(content).not.toContain('EUR');
+    expect(content).not.toContain('€');
   });
 
   it('renders the EMPTY motivation state returned by the backend', () => {
