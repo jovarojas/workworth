@@ -1,6 +1,6 @@
 # SPEC 005: Motivational Dashboard
 
-**Status:** Draft
+**Status:** Verified
 **Owner:** WorkWorth
 **Related tasks:** [TASKS.md](../../TASKS.md)
 **Related documentation:** [SPEC process](README.md), [Reward affordability](004-reward-affordability.md), [Earnings and earning periods](003-earnings-and-earning-periods.md), [Business rules](../business-rules.md), [Architecture decisions](../../DECISIONS.md)
@@ -37,16 +37,16 @@ The existing Dashboard already presents current earnings, the current workday, a
 
 ## Functional requirements
 
-- [ ] The Dashboard continues to show its current Earnings and Workday sections independently of motivational data.
-- [ ] The backend provides one read-only Dashboard motivation result based only on current pending rewards and current effective Earnings.
-- [ ] The Dashboard presents a primary reward when the backend supplies one.
-- [ ] The backend selects an affordable primary reward by the most immediate relevant context in the fixed order `TODAY → WEEK → MONTH → ALL_TIME`.
-- [ ] When no pending reward is affordable, the backend supplies a progress reward using the most immediate evaluable context in the same order.
-- [ ] A valid optional combination contains at least two distinct pending rewards and is supplied only by the backend.
-- [ ] A motivation result with no pending rewards presents an actionable empty state without treating it as an error.
-- [ ] A non-evaluable Earnings situation presents a clear unavailable state without an invented amount or affordability outcome.
-- [ ] A motivational loading or error state never hides otherwise valid Earnings or Workday data.
-- [ ] Angular displays only amounts, currency codes, contexts, outcomes, and combinations received from the backend.
+- [x] The Dashboard continues to show its current Earnings and Workday sections independently of motivational data.
+- [x] The backend provides one read-only Dashboard motivation result based only on current pending rewards and current effective Earnings.
+- [x] The Dashboard presents a primary reward when the backend supplies one.
+- [x] The backend selects an affordable primary reward by the most immediate relevant context in the fixed order `TODAY → WEEK → MONTH → ALL_TIME`.
+- [x] When no pending reward is affordable, the backend supplies a progress reward using the most immediate evaluable context in the same order.
+- [x] A valid optional combination contains at least two distinct pending rewards and is supplied only by the backend.
+- [x] A motivation result with no pending rewards presents an actionable empty state without treating it as an error.
+- [x] A non-evaluable Earnings situation presents a clear unavailable state without an invented amount or affordability outcome.
+- [x] A motivational loading or error state never hides otherwise valid Earnings or Workday data.
+- [x] Angular displays only amounts, currency codes, contexts, outcomes, and combinations received from the backend.
 
 ## Business rules
 
@@ -123,17 +123,17 @@ All motivation amounts use the effective currency received from backend. The Das
 
 ## Acceptance criteria
 
-- [ ] Existing Dashboard Earnings and Workday behavior is retained.
-- [ ] `GET /api/v1/dashboard/motivation` returns only current, backend-resolved motivation data.
-- [ ] The response distinguishes `EMPTY`, `AVAILABLE`, `PROGRESS`, and `UNAVAILABLE`.
-- [ ] An affordable primary reward uses the first applicable context according to `TODAY → WEEK → MONTH → ALL_TIME`.
-- [ ] A progress primary reward uses the first evaluable context according to the same order.
-- [ ] The response contains no persisted or durable newly-reached event.
-- [ ] An optional combination contains at least two distinct pending rewards and is supplied only with `AVAILABLE`.
-- [ ] `UNAVAILABLE` does not expose an invented amount, shortfall, surplus, or affordability outcome.
-- [ ] The Dashboard formats only backend-provided amounts and currency codes and makes no economic decision.
-- [ ] A motivation error or empty state does not remove valid Earnings or Workday content.
-- [ ] The Dashboard remains usable on small screens and communicates loading/error states accessibly.
+- [x] Existing Dashboard Earnings and Workday behavior is retained.
+- [x] `GET /api/v1/dashboard/motivation` returns only current, backend-resolved motivation data.
+- [x] The response distinguishes `EMPTY`, `AVAILABLE`, `PROGRESS`, and `UNAVAILABLE`.
+- [x] An affordable primary reward uses the first applicable context according to `TODAY → WEEK → MONTH → ALL_TIME`.
+- [x] A progress primary reward uses the first evaluable context according to the same order.
+- [x] The response contains no persisted or durable newly-reached event.
+- [x] An optional combination contains at least two distinct pending rewards and is supplied only with `AVAILABLE`.
+- [x] `UNAVAILABLE` does not expose an invented amount, shortfall, surplus, or affordability outcome.
+- [x] The Dashboard formats only backend-provided amounts and currency codes and makes no economic decision.
+- [x] A motivation error or empty state does not remove valid Earnings or Workday content.
+- [x] The Dashboard remains usable on small screens and communicates loading/error states accessibly.
 
 ## Technical considerations
 
@@ -209,4 +209,4 @@ The final DTO names and exact nesting are an implementation concern, but the end
 
 ## Traceability and verification
 
-Before implementation, this Draft requires an approved technical proposal for the Dashboard backend read contract and the Dashboard Angular integration. Verification must demonstrate every acceptance criterion, independent loading/error behavior, and that no reward marker or economic rule is duplicated in Angular.
+The Dashboard backend read contract and Angular integration are verified. Focused backend and Angular tests demonstrate the acceptance criteria, including independent loading and errors, read-only reward-marker behavior, and the absence of duplicated economic decisions in Angular.
