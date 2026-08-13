@@ -36,5 +36,5 @@ Every SPEC must use [TEMPLATE.md](TEMPLATE.md) and contain the sections defined 
 | 003-earnings-periods.md | Planned | Today, week, month, and all-time earnings. |
 | 004-reward-affordability.md | Planned | Reward evaluation by earnings context. |
 | 005-dashboard.md | Planned | Motivational dashboard hierarchy. |
-| 006-goals.md | Planned | Personal goals and progress. |
+| [006-goals.md](006-goals.md) | Approved | Personal goals and progress. |
 | 007-statistics.md | Planned | Statistics and charts. |
