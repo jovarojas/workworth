@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
 import { DashboardApiService } from '../../../../core/services/dashboard-api.service';
@@ -25,7 +26,8 @@ describe('DashboardPageComponent', () => {
       providers: [
         { provide: EarningsApiService, useValue: earnings },
         { provide: DashboardApiService, useValue: dashboard },
-        { provide: WorkdayApiService, useValue: workdays }
+        { provide: WorkdayApiService, useValue: workdays },
+        provideRouter([])
       ]
     }).compileComponents();
   });
@@ -73,8 +75,10 @@ describe('DashboardPageComponent', () => {
     fixture.detectChanges();
 
     const content = fixture.nativeElement.textContent;
-    expect(content).toContain('Puedes conseguir Auriculares');
-    expect(content).toContain('WEEK');
+    expect(content).toContain('Ya puedes conseguir Auriculares');
+    expect(content).toContain('esta semana');
+    expect(fixture.nativeElement.querySelector('.motivation-combination')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="/rewards"]')).not.toBeNull();
   });
 
   it('renders the backend-provided PROGRESS shortfall without calculating it', () => {
@@ -89,7 +93,7 @@ describe('DashboardPageComponent', () => {
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('Auriculares está cada vez más cerca');
     expect(content).toContain('35.00');
-    expect(content).toContain('TODAY');
+    expect(content).toContain('hoy');
   });
 
   it('renders the UNAVAILABLE motivation state without inventing an amount', () => {
@@ -102,6 +106,30 @@ describe('DashboardPageComponent', () => {
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('Ahora mismo no podemos evaluar tus recompensas');
     expect(content).not.toContain('€0.00');
+  });
+
+  it('renders the optional backend-provided combination without summing or grouping rewards', () => {
+    mockAvailableDashboard();
+    dashboard.motivation.mockReturnValue(of({
+      ...motivation('AVAILABLE', { relevantContext: 'MONTH', outcome: 'AFFORDABLE', surplus: 5, shortfall: null }),
+      combination: {
+        context: 'MONTH', availableAmount: 95, totalPrice: 90, currencyCode: 'USD',
+        rewards: [
+          { id: 7, name: 'Hamburguesas', quantity: 2, price: 30, currencyCode: 'USD', status: 'PENDING' },
+          { id: 8, name: 'Funkos de Shakira', quantity: 2, price: 60, currencyCode: 'USD', status: 'PENDING' }
+        ]
+      }
+    }));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('2 Hamburguesas');
+    expect(content).toContain('2 Funkos de Shakira');
+    expect(content).toContain('Total:');
+    expect(content).toContain('Disponible:');
+    expect(content).toContain('USD');
   });
 
   it('keeps earning and workday data visible when motivation fails', () => {

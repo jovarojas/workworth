@@ -5,16 +5,18 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
 import { finalize, Subscription, timer } from 'rxjs';
 import { problemDetailFrom } from '../../../../core/http/problem-detail';
-import { DashboardMotivationResponse, EarningPeriodResponse, EarningProjectionResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
+import { DashboardMotivationResponse, DashboardRewardResponse, EarningPeriod, EarningPeriodResponse, EarningProjectionResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
 import { DashboardApiService } from '../../../../core/services/dashboard-api.service';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
 import { WorkdayApiService } from '../../../../core/services/workday-api.service';
 
 @Component({
   selector: 'app-dashboard-page',
-  imports: [CommonModule, CurrencyPipe, MatCardModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [CommonModule, CurrencyPipe, MatButtonModule, MatCardModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss'
 })
@@ -78,6 +80,19 @@ export class DashboardPageComponent implements OnInit {
 
   isPeriodUnavailable(period: EarningPeriodResponse): boolean {
     return period.status === 'UNAVAILABLE';
+  }
+
+  rewardLabel(reward: DashboardRewardResponse): string {
+    return reward.quantity > 1 ? `${reward.quantity} ${reward.name}` : reward.name;
+  }
+
+  contextLabel(context: EarningPeriod): string {
+    return {
+      TODAY: 'hoy',
+      WEEK: 'esta semana',
+      MONTH: 'este mes',
+      ALL_TIME: 'todo lo registrado'
+    }[context];
   }
 
   private loadProjection(showLoading: boolean): void {
