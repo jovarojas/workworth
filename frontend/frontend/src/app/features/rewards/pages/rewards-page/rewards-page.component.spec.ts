@@ -183,6 +183,107 @@ describe('RewardsPageComponent', () => {
     nextCombination.complete();
   });
 
+  it('keeps the post-acquisition pending list when an older pending response arrives late', () => {
+    const olderPending = new Subject<RewardResponse[]>();
+    let pendingCalls = 0;
+    rewardsApi.list.mockImplementation((status?: RewardStatus) => {
+      if (status === 'PENDING') {
+        pendingCalls++;
+        return pendingCalls === 1 ? olderPending : of([]);
+      }
+      return of([acquiredReward]);
+    });
+    fixture.detectChanges();
+
+    component.acquire(pendingReward);
+    olderPending.next([pendingReward]);
+
+    expect(component.pending()).toEqual([]);
+  });
+
+  it('keeps the post-deletion pending list when an older pending response arrives late', () => {
+    const olderPending = new Subject<RewardResponse[]>();
+    let pendingCalls = 0;
+    rewardsApi.list.mockImplementation((status?: RewardStatus) => {
+      if (status === 'PENDING') {
+        pendingCalls++;
+        return pendingCalls === 1 ? olderPending : of([]);
+      }
+      return of([acquiredReward]);
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    fixture.detectChanges();
+
+    component.confirmDelete(pendingReward);
+    olderPending.next([pendingReward]);
+
+    expect(component.pending()).toEqual([]);
+  });
+
+  it('keeps the post-acquisition acquired list when an older acquired response arrives late', () => {
+    const olderAcquired = new Subject<RewardResponse[]>();
+    let acquiredCalls = 0;
+    rewardsApi.list.mockImplementation((status?: RewardStatus) => {
+      if (status === 'ACQUIRED') {
+        acquiredCalls++;
+        return acquiredCalls === 1 ? olderAcquired : of([acquiredReward]);
+      }
+      return of([]);
+    });
+    fixture.detectChanges();
+
+    component.acquire(pendingReward);
+    olderAcquired.next([]);
+
+    expect(component.acquired()).toEqual([acquiredReward]);
+  });
+
+  it('ignores an older pending error after a newer pending response succeeds', () => {
+    const olderPending = new Subject<RewardResponse[]>();
+    let pendingCalls = 0;
+    rewardsApi.list.mockImplementation((status?: RewardStatus) => {
+      if (status === 'PENDING') {
+        pendingCalls++;
+        return pendingCalls === 1 ? olderPending : of([]);
+      }
+      return of([]);
+    });
+    fixture.detectChanges();
+
+    component.loadPending();
+    olderPending.error(new HttpErrorResponse({ status: 0 }));
+
+    expect(component.pendingError()).toBeNull();
+  });
+
+  it('keeps the newest relevant combination when an older response arrives late', () => {
+    const olderCombination = new Subject<{ evaluable: boolean; combination: RewardCombinationResponse | null }>();
+    const newerCombination = new Subject<{ evaluable: boolean; combination: RewardCombinationResponse | null }>();
+    let requests = 0;
+    rewardsApi.relevantCombination.mockImplementation(() => ++requests === 1 ? olderCombination : newerCombination);
+    fixture.detectChanges();
+
+    component.loadRelevantCombination();
+    newerCombination.next({ evaluable: true, combination: combination('MONTH') });
+    olderCombination.next({ evaluable: true, combination: combination('WEEK') });
+
+    expect(component.relevantCombination()?.context).toBe('MONTH');
+  });
+
+  it('keeps the newest relevance for a reward when an older response arrives late', () => {
+    const olderRelevance = new Subject<RewardRelevanceResponse>();
+    const newerRelevance = new Subject<RewardRelevanceResponse>();
+    let relevanceCalls = 0;
+    rewardsApi.relevance.mockImplementation(() => ++relevanceCalls === 1 ? olderRelevance : newerRelevance);
+    fixture.detectChanges();
+
+    component.loadPending();
+    newerRelevance.next(relevance(pendingReward.id, { relevantContext: 'MONTH', outcome: 'AFFORDABLE' }));
+    olderRelevance.next(relevance(pendingReward.id, { relevantContext: 'WEEK', outcome: 'AFFORDABLE' }));
+
+    expect(component.relevanceByRewardId()[pendingReward.id].relevantContext).toBe('MONTH');
+  });
+
   it('still refreshes CRUD lists after an acquisition', () => {
     fixture.detectChanges();
     component.acquire(pendingReward);

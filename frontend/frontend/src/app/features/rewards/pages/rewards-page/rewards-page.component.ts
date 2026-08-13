@@ -32,6 +32,10 @@ import { RewardFormComponent } from '../../components/reward-form/reward-form.co
 })
 export class RewardsPageComponent implements OnInit {
   private readonly rewards = inject(RewardsApiService);
+  private pendingRequestGeneration = 0;
+  private acquiredRequestGeneration = 0;
+  private relevanceRequestGeneration = 0;
+  private combinationRequestGeneration = 0;
 
   @ViewChild(RewardFormComponent) private rewardForm?: RewardFormComponent;
 
@@ -67,51 +71,84 @@ export class RewardsPageComponent implements OnInit {
   }
 
   loadPending(showLoading = true): void {
+    const requestGeneration = ++this.pendingRequestGeneration;
+    this.invalidateRelevances();
     if (showLoading) {
       this.pendingLoading.set(true);
     }
     this.pendingError.set(null);
     this.rewards.list('PENDING')
-      .pipe(finalize(() => this.pendingLoading.set(false)))
+      .pipe(finalize(() => {
+        if (requestGeneration === this.pendingRequestGeneration) {
+          this.pendingLoading.set(false);
+        }
+      }))
       .subscribe({
         next: (rewards) => {
+          if (requestGeneration !== this.pendingRequestGeneration) {
+            return;
+          }
           this.pending.set(rewards);
           this.loadRelevances(rewards);
         },
-        error: (error: unknown) => this.pendingError.set(this.errorMessage(error, 'las recompensas pendientes'))
+        error: (error: unknown) => {
+          if (requestGeneration === this.pendingRequestGeneration) {
+            this.pendingError.set(this.errorMessage(error, 'las recompensas pendientes'));
+          }
+        }
       });
   }
 
   loadAcquired(showLoading = true): void {
+    const requestGeneration = ++this.acquiredRequestGeneration;
     if (showLoading) {
       this.acquiredLoading.set(true);
     }
     this.acquiredError.set(null);
     this.rewards.list('ACQUIRED')
-      .pipe(finalize(() => this.acquiredLoading.set(false)))
+      .pipe(finalize(() => {
+        if (requestGeneration === this.acquiredRequestGeneration) {
+          this.acquiredLoading.set(false);
+        }
+      }))
       .subscribe({
-        next: (rewards) => this.acquired.set(rewards),
-        error: (error: unknown) => this.acquiredError.set(this.errorMessage(error, 'las recompensas conseguidas'))
+        next: (rewards) => {
+          if (requestGeneration === this.acquiredRequestGeneration) {
+            this.acquired.set(rewards);
+          }
+        },
+        error: (error: unknown) => {
+          if (requestGeneration === this.acquiredRequestGeneration) {
+            this.acquiredError.set(this.errorMessage(error, 'las recompensas conseguidas'));
+          }
+        }
       });
   }
 
   loadRelevantCombination(): void {
-    if (this.combinationLoading() && this.combinationError() === null && this.combinationEvaluable() !== null) {
-      return;
-    }
+    const requestGeneration = ++this.combinationRequestGeneration;
     this.combinationLoading.set(true);
     this.combinationError.set(null);
     this.otherCombinationUnavailable.set(false);
     this.rewards.relevantCombination()
-      .pipe(finalize(() => this.combinationLoading.set(false)))
+      .pipe(finalize(() => {
+        if (requestGeneration === this.combinationRequestGeneration) {
+          this.combinationLoading.set(false);
+        }
+      }))
       .subscribe({
         next: (response) => {
+          if (requestGeneration !== this.combinationRequestGeneration) {
+            return;
+          }
           this.combinationEvaluable.set(response.evaluable);
           this.relevantCombination.set(this.isVisibleCombination(response.combination) ? response.combination : null);
         },
-        error: (error: unknown) => this.combinationError.set(
-          this.errorMessage(error, 'No se ha podido consultar la combinación de recompensas.')
-        )
+        error: (error: unknown) => {
+          if (requestGeneration === this.combinationRequestGeneration) {
+            this.combinationError.set(this.errorMessage(error, 'No se ha podido consultar la combinación de recompensas.'));
+          }
+        }
       });
   }
 
@@ -121,22 +158,32 @@ export class RewardsPageComponent implements OnInit {
       return;
     }
 
+    const requestGeneration = ++this.combinationRequestGeneration;
     this.combinationLoading.set(true);
     this.combinationError.set(null);
     this.otherCombinationUnavailable.set(false);
     this.rewards.combination(combination.context, combination.rewards.map((reward) => reward.id))
-      .pipe(finalize(() => this.combinationLoading.set(false)))
+      .pipe(finalize(() => {
+        if (requestGeneration === this.combinationRequestGeneration) {
+          this.combinationLoading.set(false);
+        }
+      }))
       .subscribe({
         next: (alternative) => {
+          if (requestGeneration !== this.combinationRequestGeneration) {
+            return;
+          }
           if (this.isVisibleCombination(alternative)) {
             this.relevantCombination.set(alternative);
           } else {
             this.otherCombinationUnavailable.set(true);
           }
         },
-        error: (error: unknown) => this.combinationError.set(
-          this.errorMessage(error, 'No se ha podido buscar otra combinación.')
-        )
+        error: (error: unknown) => {
+          if (requestGeneration === this.combinationRequestGeneration) {
+            this.combinationError.set(this.errorMessage(error, 'No se ha podido buscar otra combinación.'));
+          }
+        }
       });
   }
 
@@ -225,6 +272,7 @@ export class RewardsPageComponent implements OnInit {
   }
 
   private loadRelevances(rewards: RewardResponse[]): void {
+    const requestGeneration = this.relevanceRequestGeneration;
     const ids = new Set(rewards.map((reward) => reward.id));
     this.relevanceByRewardId.set(Object.fromEntries(
       Object.entries(this.relevanceByRewardId()).filter(([id]) => ids.has(Number(id)))
@@ -232,13 +280,10 @@ export class RewardsPageComponent implements OnInit {
     this.relevanceErrors.set(Object.fromEntries(
       Object.entries(this.relevanceErrors()).filter(([id]) => ids.has(Number(id)))
     ));
-    rewards.forEach((reward) => this.loadRelevance(reward));
+    rewards.forEach((reward) => this.loadRelevance(reward, requestGeneration));
   }
 
-  private loadRelevance(reward: RewardResponse): void {
-    if (this.relevanceLoadingIds().has(reward.id)) {
-      return;
-    }
+  private loadRelevance(reward: RewardResponse, requestGeneration: number): void {
     this.relevanceLoadingIds.update((ids) => new Set(ids).add(reward.id));
     this.relevanceErrors.update((errors) => {
       const { [reward.id]: _, ...remaining } = errors;
@@ -246,17 +291,35 @@ export class RewardsPageComponent implements OnInit {
     });
     this.rewards.relevance(reward.id)
       .pipe(finalize(() => this.relevanceLoadingIds.update((ids) => {
+        if (requestGeneration !== this.relevanceRequestGeneration) {
+          return ids;
+        }
         const next = new Set(ids);
         next.delete(reward.id);
         return next;
       })))
       .subscribe({
-        next: (relevance) => this.relevanceByRewardId.update((all) => ({ ...all, [reward.id]: relevance })),
-        error: (error: unknown) => this.relevanceErrors.update((all) => ({
-          ...all,
-          [reward.id]: this.errorMessage(error, 'No se ha podido actualizar la relevancia de esta recompensa.')
-        }))
+        next: (relevance) => {
+          if (requestGeneration === this.relevanceRequestGeneration) {
+            this.relevanceByRewardId.update((all) => ({ ...all, [reward.id]: relevance }));
+          }
+        },
+        error: (error: unknown) => {
+          if (requestGeneration === this.relevanceRequestGeneration) {
+            this.relevanceErrors.update((all) => ({
+              ...all,
+              [reward.id]: this.errorMessage(error, 'No se ha podido actualizar la relevancia de esta recompensa.')
+            }));
+          }
+        }
       });
+  }
+
+  private invalidateRelevances(): void {
+    this.relevanceRequestGeneration++;
+    this.relevanceByRewardId.set({});
+    this.relevanceErrors.set({});
+    this.relevanceLoadingIds.set(new Set());
   }
 
   private isVisibleCombination(combination: RewardCombinationResponse | null): combination is RewardCombinationResponse {
