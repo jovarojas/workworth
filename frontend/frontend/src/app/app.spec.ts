@@ -23,7 +23,7 @@ describe('App', () => {
 
     const links = Array.from(fixture.nativeElement.querySelectorAll('a')) as HTMLAnchorElement[];
     expect(links.map((link) => link.textContent?.trim())).toEqual([
-      'WORKWORTH', 'Dashboard', 'Jornada', 'Historial', 'Recompensas', 'Objetivos', 'Estadísticas', 'Salario', 'Ajustes'
+      'WORKWORTH', 'Inicio', 'Jornada', 'Historial', 'Recompensas', 'Objetivos', 'Estadísticas', 'Salario', 'Ajustes'
     ]);
     expect(links.map((link) => link.getAttribute('href'))).toContain('/workday');
     expect(links.map((link) => link.getAttribute('href'))).toContain('/salary');

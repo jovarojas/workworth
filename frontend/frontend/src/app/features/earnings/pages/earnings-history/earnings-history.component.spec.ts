@@ -28,8 +28,8 @@ describe('EarningsHistoryComponent', () => {
     expect(content).toContain('2026-08-12');
     expect(content).toContain('12.50');
     expect(content).toContain('EUR');
-    expect(content).toContain('UNAVAILABLE');
-    expect(content).toContain('SALARY_RATE_UNAVAILABLE');
+    expect(content).toContain('No disponible');
+    expect(content).toContain('No se puede calcular la tarifa salarial.');
     expect(fixture.nativeElement.querySelector('a[aria-label="Ver detalle de la jornada 2026-08-12"]')?.getAttribute('href'))
       .toBe('/earnings/workdays/2026-08-12');
   });
@@ -74,7 +74,7 @@ describe('EarningsHistoryComponent', () => {
     const fixture = TestBed.createComponent(EarningsHistoryComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Invalid pagination parameters.');
+    expect(fixture.nativeElement.textContent).toContain('Revisa los datos introducidos.');
   });
 
   it('shows a connection error without silently hiding it', () => {

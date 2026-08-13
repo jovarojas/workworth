@@ -38,7 +38,7 @@
           @case ('CANCELLED') { La jornada se marcó como no trabajada. }
         }
       </p>
-      <span class="status-panel__code">{{ currentWorkday.status }}</span>
+      <span class="status-panel__code">{{ statusLabel(currentWorkday.status) }}</span>
     </section>
 
     <section class="details-grid" aria-label="Detalles de la jornada">

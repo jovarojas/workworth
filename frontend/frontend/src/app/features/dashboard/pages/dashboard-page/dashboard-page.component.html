@@ -21,7 +21,7 @@
       @if (isUnavailable() || !currentProjection.currencyCode) {
         <h2 id="today-earning">No disponible</h2>
         <p class="hero__detail">
-          {{ currentProjection.unavailableReason || 'No hay una moneda disponible para la ganancia de hoy.' }}
+          {{ unavailableReasonLabel(currentProjection.unavailableReason) || 'No hay una moneda disponible para la ganancia de hoy.' }}
         </p>
       } @else {
         <h2 id="today-earning">
@@ -131,7 +131,7 @@
 
           @if (workday(); as currentWorkday) {
             <span class="status" [class.status--active]="currentWorkday.status === 'ACTIVE'" [class.status--break]="currentWorkday.status === 'ON_MEAL_BREAK'">
-              {{ currentWorkday.status }}
+              {{ workdayStatusLabel(currentWorkday.status) }}
             </span>
           }
         </div>

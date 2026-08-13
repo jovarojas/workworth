@@ -8,7 +8,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { finalize, Subscription, timer } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailMessage } from '../../../../core/http/problem-detail';
+import { earningPeriodContextLabel, earningUnavailableReasonLabel, workdayStatusLabel } from '../../../../core/presentation/display-labels';
 import { DashboardMotivationResponse, DashboardRewardResponse, EarningPeriod, EarningPeriodResponse, EarningProjectionResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
 import { DashboardApiService } from '../../../../core/services/dashboard-api.service';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
@@ -69,13 +70,7 @@ export class DashboardPageComponent implements OnInit {
   }
 
   workdayStatusLabel(status: WorkdayStatus): string {
-    return {
-      SCHEDULED: 'Programada',
-      ACTIVE: 'En curso',
-      ON_MEAL_BREAK: 'En pausa de comida',
-      COMPLETED: 'Finalizada',
-      CANCELLED: 'Cancelada'
-    }[status];
+    return workdayStatusLabel(status);
   }
 
   isPeriodUnavailable(period: EarningPeriodResponse): boolean {
@@ -87,12 +82,11 @@ export class DashboardPageComponent implements OnInit {
   }
 
   contextLabel(context: EarningPeriod): string {
-    return {
-      TODAY: 'hoy',
-      WEEK: 'esta semana',
-      MONTH: 'este mes',
-      ALL_TIME: 'todo lo registrado'
-    }[context];
+    return earningPeriodContextLabel(context);
+  }
+
+  unavailableReasonLabel(reason: string | null): string | null {
+    return earningUnavailableReasonLabel(reason);
   }
 
   private loadProjection(showLoading: boolean): void {
@@ -210,7 +204,7 @@ export class DashboardPageComponent implements OnInit {
   }
 
   private motivationErrorMessage(error: unknown): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }

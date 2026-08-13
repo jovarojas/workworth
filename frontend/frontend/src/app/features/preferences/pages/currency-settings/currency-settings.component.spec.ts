@@ -67,7 +67,7 @@ describe('CurrencySettingsComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.settings()?.currencyCode).toBe('EUR');
-    expect(fixture.nativeElement.textContent).toContain('Currency cannot change after economic data exists.');
+    expect(fixture.nativeElement.textContent).toContain('La moneda no puede cambiarse porque ya existen datos económicos registrados.');
   });
 
   it('shows a connection error when the global currency cannot be loaded', () => {

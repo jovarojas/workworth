@@ -7,7 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailMessage } from '../../../../core/http/problem-detail';
+import { earningCorrectionCauseLabel, earningStatusLabel, earningUnavailableReasonLabel } from '../../../../core/presentation/display-labels';
 import { EarningCorrectionResponse, EarningResponse } from '../../../../core/models/workworth-api.models';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
 
@@ -58,6 +59,18 @@ export class EarningDetailComponent implements OnInit {
       });
   }
 
+  earningStatusLabel(status: EarningResponse['status']): string {
+    return earningStatusLabel(status);
+  }
+
+  unavailableReasonLabel(reason: string | null): string | null {
+    return earningUnavailableReasonLabel(reason);
+  }
+
+  correctionCauseLabel(cause: string): string {
+    return earningCorrectionCauseLabel(cause);
+  }
+
   private loadCorrections(date: string): void {
     this.correctionsLoading.set(true);
     this.correctionsError.set(null);
@@ -71,7 +84,7 @@ export class EarningDetailComponent implements OnInit {
   }
 
   private earningErrorMessage(error: unknown): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }
@@ -85,7 +98,7 @@ export class EarningDetailComponent implements OnInit {
   }
 
   private correctionsErrorMessage(error: unknown): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }

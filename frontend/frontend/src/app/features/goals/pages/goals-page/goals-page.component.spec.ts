@@ -40,8 +40,8 @@ describe('GoalsPageComponent', () => {
     expect(goalsApi.history).toHaveBeenCalledTimes(1);
     expect(fixture.nativeElement.textContent).toContain('En marcha');
     expect(fixture.nativeElement.textContent).toContain('Cerrados');
-    expect(fixture.nativeElement.textContent).toContain('COMPLETED');
-    expect(fixture.nativeElement.textContent).toContain('CANCELLED');
+    expect(fixture.nativeElement.textContent).toContain('Completado');
+    expect(fixture.nativeElement.textContent).toContain('Cancelado');
   });
 
   it('presents progress supplied by the backend without consulting Earnings', () => {
@@ -132,7 +132,7 @@ describe('GoalsPageComponent', () => {
 
     expect(component.activeGoals()).toEqual([activeGoal]);
     expect(component.historyGoals()).toEqual([completedGoal, cancelledGoal]);
-    expect(fixture.nativeElement.textContent).toContain('Only a reached active goal can be completed.');
+    expect(fixture.nativeElement.textContent).toContain('Esta operación no es posible para el estado actual del objetivo.');
   });
 
   it('prevents duplicate lifecycle requests while an action is pending', () => {

@@ -32,9 +32,9 @@ describe('EarningDetailComponent', () => {
     expect(content).toContain('12.50');
     expect(content).toContain('EUR');
     expect(content).toContain('3600 segundos');
-    expect(content).toContain('WORKDAY_CANCELLED');
-    expect(content).toContain('PARTIAL_ABSENCE_CHANGED');
-    expect(content).toContain('MEAL_BREAK_CHANGED');
+    expect(content).toContain('Jornada cancelada');
+    expect(content).toContain('Ausencia parcial modificada');
+    expect(content).toContain('Pausa modificada');
     expect(earnings.workday).toHaveBeenCalledWith('2026-08-12');
     expect(earnings.corrections).toHaveBeenCalledWith('2026-08-12');
   });
@@ -80,7 +80,7 @@ describe('EarningDetailComponent', () => {
     const fixture = TestBed.createComponent(EarningDetailComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('SALARY_RATE_UNAVAILABLE');
+    expect(fixture.nativeElement.textContent).toContain('No se puede calcular la tarifa salarial.');
     expect(fixture.nativeElement.textContent).toContain('No disponible');
   });
 
@@ -122,7 +122,7 @@ describe('EarningDetailComponent', () => {
 
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('12.50');
-    expect(content).toContain('Corrections are unavailable.');
+    expect(content).toContain('No se ha podido completar la operación.');
   });
 
   function available() {

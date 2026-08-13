@@ -7,7 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailMessage } from '../../../../core/http/problem-detail';
+import { earningStatusLabel, earningUnavailableReasonLabel } from '../../../../core/presentation/display-labels';
 import { EarningHistoryResponse } from '../../../../core/models/workworth-api.models';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
 
@@ -56,8 +57,16 @@ export class EarningsHistoryComponent implements OnInit {
     }
   }
 
+  earningStatusLabel(status: EarningHistoryResponse['items'][number]['status']): string {
+    return earningStatusLabel(status);
+  }
+
+  unavailableReasonLabel(reason: string | null): string | null {
+    return earningUnavailableReasonLabel(reason);
+  }
+
   private errorMessage(error: unknown): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }

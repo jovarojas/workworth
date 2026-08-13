@@ -21,7 +21,7 @@
       <mat-card class="profile-card">
         <mat-card-content>
           <p class="eyebrow">PERFIL VIGENTE</p>
-          <h2>Fuente: {{ currentProfile.activeIncomeSource }}</h2>
+          <h2>Fuente: {{ incomeSourceLabel(currentProfile.activeIncomeSource) }}</h2>
           <dl class="profile-data">
             <div>
               <dt>Neto mensual real</dt>
@@ -133,15 +133,15 @@
   <section class="estimator" aria-labelledby="estimator-heading">
     <mat-card>
       <mat-card-content>
-        <p class="eyebrow">ESTIMADOR FISCAL</p>
+        <p class="eyebrow">ESTIMACIÓN FISCAL</p>
         @if (loadingEstimator()) {
           <p aria-live="polite">Consultando el estado del estimador…</p>
         } @else if (estimatorError(); as errorMessage) {
           <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p>
         } @else if (estimator(); as estimatorStatus) {
-          <h2 id="estimator-heading">{{ estimatorStatus.status }}</h2>
+          <h2 id="estimator-heading">{{ estimatorStatusLabel(estimatorStatus.status) }}</h2>
           @if (estimatorNotImplemented()) {
-            <p>El estimador fiscal todavía no está implementado. Tu neto mensual real sigue siendo la fuente de verdad.</p>
+            <p>La estimación fiscal todavía no está disponible. Tu neto mensual real sigue siendo el dato de referencia.</p>
           }
         }
       </mat-card-content>

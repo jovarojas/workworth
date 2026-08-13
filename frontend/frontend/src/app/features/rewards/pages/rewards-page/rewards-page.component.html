@@ -44,7 +44,7 @@
     } @else if (relevantCombination(); as combination) {
       <mat-card class="combination-card" aria-live="polite">
         <mat-card-content>
-          <p>Con lo registrado en <strong>{{ combination.context }}</strong> puedes conseguir:</p>
+          <p>Con lo registrado <strong>{{ contextLabel(combination.context) }}</strong> puedes conseguir:</p>
           <ul>
             @for (reward of combination.rewards; track reward.id) {
               <li>{{ rewardLabel(reward) }} · {{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</li>
@@ -94,7 +94,7 @@
             <mat-card-content>
               <div class="reward-card__heading">
                 <h3>{{ rewardLabel(reward) }}</h3>
-                <span>{{ reward.status }}</span>
+                <span>{{ rewardStatusLabel(reward.status) }}</span>
               </div>
               <strong>{{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</strong>
               <small>{{ reward.currencyCode }} · Precio total</small>
@@ -143,7 +143,7 @@
             <mat-card-content>
               <div class="reward-card__heading">
                 <h3>{{ rewardLabel(reward) }}</h3>
-                <span>{{ reward.status }}</span>
+                <span>{{ rewardStatusLabel(reward.status) }}</span>
               </div>
               <strong>{{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</strong>
               <small>{{ reward.currencyCode }} · Precio total</small>

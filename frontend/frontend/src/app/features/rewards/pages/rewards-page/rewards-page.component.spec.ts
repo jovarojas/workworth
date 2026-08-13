@@ -61,7 +61,7 @@ describe('RewardsPageComponent', () => {
     rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id, { relevantContext: 'WEEK', outcome: 'AFFORDABLE' })));
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Puedes conseguirla con lo registrado en WEEK.');
+    expect(fixture.nativeElement.textContent).toContain('Puedes conseguirla con lo registrado esta semana.');
   });
 
   it('presents the backend shortfall without calculating it locally', () => {
@@ -87,7 +87,7 @@ describe('RewardsPageComponent', () => {
     })));
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Antes la alcanzabas en MONTH; ahora también la alcanzas en WEEK.');
+    expect(fixture.nativeElement.textContent).toContain('Antes la alcanzabas este mes; ahora también la alcanzas esta semana.');
   });
 
   it('keeps an unevaluable reward visible with its contextual message', () => {
@@ -121,7 +121,7 @@ describe('RewardsPageComponent', () => {
     rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: true, combination: combination('MONTH') }));
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Con lo registrado en MONTH puedes conseguir:');
+    expect(fixture.nativeElement.textContent).toContain('Con lo registrado este mes puedes conseguir:');
     expect(fixture.nativeElement.textContent).toContain('Total:');
     expect(fixture.nativeElement.textContent).toContain('Disponible:');
   });

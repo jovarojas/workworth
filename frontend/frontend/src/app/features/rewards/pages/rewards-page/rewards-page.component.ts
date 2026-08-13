@@ -6,7 +6,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize, Observable } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailMessage } from '../../../../core/http/problem-detail';
+import { earningPeriodContextLabel, rewardStatusLabel } from '../../../../core/presentation/display-labels';
 import {
   CreateRewardRequest,
   RewardCombinationResponse,
@@ -248,6 +249,14 @@ export class RewardsPageComponent implements OnInit {
     return reward.quantity > 1 ? `${reward.quantity} ${reward.name}` : reward.name;
   }
 
+  rewardStatusLabel(status: RewardResponse['status']): string {
+    return rewardStatusLabel(status);
+  }
+
+  contextLabel(context: RewardCombinationResponse['context']): string {
+    return earningPeriodContextLabel(context);
+  }
+
   relevanceMessage(reward: RewardResponse): string | null {
     const relevance = this.relevanceByRewardId()[reward.id];
     if (!relevance) {
@@ -258,12 +267,12 @@ export class RewardsPageComponent implements OnInit {
     }
     if (relevance.newlyReached && relevance.relevantContext) {
       if (relevance.previousReachedContext) {
-        return `Antes la alcanzabas en ${relevance.previousReachedContext}; ahora también la alcanzas en ${relevance.relevantContext}.`;
+        return `Antes la alcanzabas ${earningPeriodContextLabel(relevance.previousReachedContext)}; ahora también la alcanzas ${earningPeriodContextLabel(relevance.relevantContext)}.`;
       }
       return `Ahora puedes conseguir ${this.rewardLabel(reward)} (${relevance.price} ${relevance.currencyCode}).`;
     }
     if (relevance.outcome === 'AFFORDABLE' && relevance.relevantContext) {
-      return `Puedes conseguirla con lo registrado en ${relevance.relevantContext}.`;
+      return `Puedes conseguirla con lo registrado ${earningPeriodContextLabel(relevance.relevantContext)}.`;
     }
     if (relevance.outcome === 'SHORTFALL' && relevance.shortfall !== null) {
       return `Te faltan ${relevance.shortfall} ${relevance.currencyCode} para conseguirla.`;
@@ -349,7 +358,7 @@ export class RewardsPageComponent implements OnInit {
   }
 
   private errorMessage(error: unknown, fallback: string): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }

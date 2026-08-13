@@ -1,6 +1,6 @@
 <main class="earnings-history">
   <header class="earnings-history__header">
-    <p class="eyebrow">EARNINGS</p>
+    <p class="eyebrow">GANANCIAS</p>
     <h1>Historial de ganancias</h1>
     <p>Consulta las ganancias efectivas registradas por cada jornada.</p>
   </header>
@@ -30,7 +30,7 @@
               <div>
                 <p class="earning-row__date">{{ earning.localDate }}</p>
                 <span class="earning-row__status" [class.earning-row__status--unavailable]="earning.status === 'UNAVAILABLE'">
-                  {{ earning.status }}
+                  {{ earningStatusLabel(earning.status) }}
                 </span>
               </div>
               <div class="earning-row__value">
@@ -39,7 +39,7 @@
                   <small>{{ earning.currencyCode }}</small>
                 } @else {
                   <span>No disponible</span>
-                  @if (earning.unavailableReason) { <small>{{ earning.unavailableReason }}</small> }
+                  @if (unavailableReasonLabel(earning.unavailableReason); as reason) { <small>{{ reason }}</small> }
                 }
               </div>
               <a mat-stroked-button [routerLink]="['/earnings/workdays', earning.localDate]" [attr.aria-label]="'Ver detalle de la jornada ' + earning.localDate">

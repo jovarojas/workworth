@@ -15,13 +15,13 @@
       <mat-card>
         <mat-card-content>
           <p class="eyebrow">ESTADO</p>
-          <h2>{{ currentEarning.status }}</h2>
+          <h2>{{ earningStatusLabel(currentEarning.status) }}</h2>
           @if (currentEarning.status === 'AVAILABLE' && currentEarning.amount !== null && currentEarning.currencyCode !== null) {
             <p class="amount">{{ currentEarning.amount | currency:currentEarning.currencyCode:'symbol':'1.2-2' }}</p>
             <p class="detail-note">{{ currentEarning.currencyCode }}</p>
           } @else {
             <p class="amount">No disponible</p>
-            @if (currentEarning.unavailableReason) { <p class="detail-note">{{ currentEarning.unavailableReason }}</p> }
+            @if (unavailableReasonLabel(currentEarning.unavailableReason); as reason) { <p class="detail-note">{{ reason }}</p> }
           }
         </mat-card-content>
       </mat-card>
@@ -51,7 +51,7 @@
           @for (correction of corrections(); track correction.sequence) {
             <mat-card>
               <mat-card-content>
-                <div class="correction__heading"><strong>Corrección #{{ correction.sequence }}</strong><span>{{ correction.cause }}</span></div>
+                <div class="correction__heading"><strong>Corrección #{{ correction.sequence }}</strong><span>{{ correctionCauseLabel(correction.cause) }}</span></div>
                 <dl>
                   <div><dt>Tiempo anterior</dt><dd>{{ correction.previousEconomicSeconds }} segundos</dd></div>
                   <div><dt>Tiempo nuevo</dt><dd>{{ correction.newEconomicSeconds }} segundos</dd></div>

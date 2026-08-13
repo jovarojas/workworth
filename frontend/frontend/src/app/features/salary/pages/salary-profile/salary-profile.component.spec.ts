@@ -43,7 +43,7 @@ describe('SalaryProfileComponent', () => {
     expect(content).toContain('15,000.00');
     expect(content).toContain('7.81');
     expect(salaries.rate).toHaveBeenCalledWith('2026-08');
-    expect(content).toContain('NOT_IMPLEMENTED');
+    expect(content).toContain('No disponible');
   });
 
   it('shows the initial configuration form when the profile does not exist', () => {
@@ -185,7 +185,7 @@ describe('SalaryProfileComponent', () => {
 
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('1,250.00');
-    expect(content).toContain('No standard economic hours are available.');
+    expect(content).toContain('No se puede calcular la tarifa salarial.');
   });
 
   it('shows backend validation field errors without submitting invalid local data', () => {
@@ -221,8 +221,8 @@ describe('SalaryProfileComponent', () => {
     component.submit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('must be greater than or equal to 0.01');
-    expect(fixture.nativeElement.textContent).toContain('Request validation failed.');
+    expect(fixture.nativeElement.textContent).toContain('El valor introducido no es válido.');
+    expect(fixture.nativeElement.textContent).toContain('Revisa los datos introducidos.');
   });
 
   it('shows a salary profile conflict without inventing a result', () => {
@@ -238,7 +238,7 @@ describe('SalaryProfileComponent', () => {
     component.submit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('A salary profile already exists for this effective month.');
+    expect(fixture.nativeElement.textContent).toContain('Ya existe un perfil salarial para ese mes.');
     expect(fixture.nativeElement.textContent).not.toContain('1,250.00');
   });
 
@@ -254,8 +254,8 @@ describe('SalaryProfileComponent', () => {
     const fixture = TestBed.createComponent(SalaryProfileComponent);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('UNAVAILABLE');
-    expect(fixture.nativeElement.textContent).toContain('A real monthly net income is required.');
+    expect(fixture.nativeElement.textContent).toContain('No disponible');
+    expect(fixture.nativeElement.textContent).toContain('La configuración salarial está incompleta.');
   });
 
   function profile() {

@@ -172,7 +172,7 @@ describe('DashboardPageComponent', () => {
     fixture.detectChanges();
 
     const content = fixture.nativeElement.textContent;
-    expect(content).toContain('No se pudo resolver la motivación.');
+    expect(content).toContain('No se ha podido cargar la motivación. Inténtalo de nuevo más tarde.');
     expect(content).toContain('12.50');
     expect(content).toContain('En curso');
     expect(content).toContain('50.00');
@@ -189,7 +189,7 @@ describe('DashboardPageComponent', () => {
 
     const content = fixture.nativeElement.textContent;
     expect(content).toContain('No disponible');
-    expect(content).toContain('SALARY_RATE_UNAVAILABLE');
+    expect(content).toContain('No se puede calcular la tarifa salarial.');
     expect(content).not.toContain('0,00');
   });
 

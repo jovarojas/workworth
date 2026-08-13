@@ -8,7 +8,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import { finalize } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailMessage } from '../../../../core/http/problem-detail';
+import { statisticsGranularityLabel } from '../../../../core/presentation/display-labels';
 import {
   StatisticAvailability,
   StatisticsGranularity,
@@ -77,6 +78,10 @@ export class StatisticsPageComponent implements OnInit, OnDestroy {
     return status === 'AVAILABLE';
   }
 
+  granularityLabel(granularity: StatisticsGranularity): string {
+    return statisticsGranularityLabel(granularity);
+  }
+
   private load(): void {
     const generation = ++this.requestGeneration;
     this.loading.set(true);
@@ -114,7 +119,7 @@ export class StatisticsPageComponent implements OnInit, OnDestroy {
       { label: 'Horas económicas efectivas', values: points.map((point) => this.valueForChart(point.workedHours.status, point.workedHours.value)), color: '#4658c4' },
       { label: 'Salario medio efectivo por hora', values: points.map((point) => this.valueForChart(point.averageHourlyEarnings.status, point.averageHourlyEarnings.amount)), color: '#8c4fc8' },
       { label: 'Ganancias efectivas totales', values: points.map((point) => this.valueForChart(point.totalEarnings.status, point.totalEarnings.amount)), color: '#067647' },
-      { label: 'Goals completados', values: points.map((point) => this.valueForChart(point.completedGoals.status, point.completedGoals.count)), color: '#b54708' }
+      { label: 'Objetivos completados', values: points.map((point) => this.valueForChart(point.completedGoals.status, point.completedGoals.count)), color: '#b54708' }
     ];
 
     series.forEach((entry, index) => {
@@ -156,7 +161,7 @@ export class StatisticsPageComponent implements OnInit, OnDestroy {
   }
 
   private errorMessage(error: unknown): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }

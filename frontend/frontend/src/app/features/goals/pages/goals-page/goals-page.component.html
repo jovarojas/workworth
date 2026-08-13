@@ -27,7 +27,7 @@
         @for (goal of activeGoals(); track goal.id) {
           <mat-card class="goal-card">
             <mat-card-content>
-              <div class="goal-card__heading"><h3>{{ goal.title }}</h3><span>{{ goal.status }}</span></div>
+              <div class="goal-card__heading"><h3>{{ goal.title }}</h3><span>{{ goalStatusLabel(goal.status) }}</span></div>
               <strong>{{ goal.targetAmount | currency:goal.currencyCode:'symbol':'1.2-2' }}</strong>
               <small>{{ goal.currencyCode }} · Importe objetivo</small>
               @if (goal.progress; as progress) {
@@ -75,7 +75,7 @@
         @for (goal of historyGoals(); track goal.id) {
           <mat-card class="goal-card goal-card--closed">
             <mat-card-content>
-              <div class="goal-card__heading"><h3>{{ goal.title }}</h3><span>{{ goal.status }}</span></div>
+              <div class="goal-card__heading"><h3>{{ goal.title }}</h3><span>{{ goalStatusLabel(goal.status) }}</span></div>
               <strong>{{ goal.targetAmount | currency:goal.currencyCode:'symbol':'1.2-2' }}</strong>
               <small>{{ goal.currencyCode }} · Objetivo cerrado</small>
             </mat-card-content>

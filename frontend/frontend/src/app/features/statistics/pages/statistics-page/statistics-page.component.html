@@ -8,7 +8,7 @@
   <section class="statistics-controls" aria-label="Granularidad de estadísticas">
     <mat-button-toggle-group [value]="granularity()" aria-label="Seleccionar periodo">
       @for (item of granularities; track item) {
-        <mat-button-toggle [value]="item" (change)="selectGranularity(item)">{{ item }}</mat-button-toggle>
+        <mat-button-toggle [value]="item" (change)="selectGranularity(item)">{{ granularityLabel(item) }}</mat-button-toggle>
       }
     </mat-button-toggle-group>
   </section>
@@ -40,7 +40,7 @@
             <div class="chart"><canvas #statisticsChart aria-hidden="true"></canvas></div>
           </mat-card-content></mat-card>
           <mat-card class="metric-card"><mat-card-content>
-            <h3>Goals completados</h3>
+            <h3>Objetivos completados</h3>
             <p>Objetivos marcados como completados en cada periodo.</p>
             <div class="chart"><canvas #statisticsChart aria-hidden="true"></canvas></div>
           </mat-card-content></mat-card>
@@ -50,7 +50,7 @@
           <table>
             <caption>Valores recibidos por periodo</caption>
             <thead>
-              <tr><th scope="col">Periodo</th><th scope="col">Horas</th><th scope="col">Salario medio/hora</th><th scope="col">Ganancias totales</th><th scope="col">Goals completados</th></tr>
+              <tr><th scope="col">Periodo</th><th scope="col">Horas</th><th scope="col">Salario medio/hora</th><th scope="col">Ganancias totales</th><th scope="col">Objetivos completados</th></tr>
             </thead>
             <tbody>
               @for (point of result.points; track point.startDate) {

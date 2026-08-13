@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { finalize } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailFrom, problemDetailMessage } from '../../../../core/http/problem-detail';
 import {
   ApplicationCurrency,
   ApplicationCurrencyResponse
@@ -96,7 +96,7 @@ export class CurrencySettingsComponent implements OnInit {
   }
 
   private loadErrorMessage(error: unknown): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }
@@ -109,7 +109,7 @@ export class CurrencySettingsComponent implements OnInit {
   private saveErrorMessage(error: unknown): string {
     const problem = problemDetailFrom(error);
     if (problem?.code === 'APPLICATION_CURRENCY_LOCKED') {
-      return problem.detail || 'La moneda está bloqueada porque ya existen datos económicos.';
+      return problemDetailMessage(error) || 'La moneda está bloqueada porque ya existen datos económicos.';
     }
     return this.loadErrorMessage(error);
   }

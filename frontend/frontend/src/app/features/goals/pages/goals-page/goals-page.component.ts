@@ -6,7 +6,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize, Observable } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailMessage } from '../../../../core/http/problem-detail';
+import { goalStatusLabel } from '../../../../core/presentation/display-labels';
 import { CreateGoalRequest, GoalResponse } from '../../../../core/models/workworth-api.models';
 import { GoalsApiService } from '../../../../core/services/goals-api.service';
 import { GoalFormComponent } from '../../components/goal-form/goal-form.component';
@@ -127,6 +128,10 @@ export class GoalsPageComponent implements OnInit {
     return this.activeGoalActionIds().has(id);
   }
 
+  goalStatusLabel(status: GoalResponse['status']): string {
+    return goalStatusLabel(status);
+  }
+
   progressText(goal: GoalResponse): string {
     if (!goal.progress?.evaluable) {
       return 'Ahora mismo no podemos calcular el progreso con las ganancias registradas.';
@@ -162,7 +167,7 @@ export class GoalsPageComponent implements OnInit {
   }
 
   private errorMessage(error: unknown, fallback: string): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     if (detail) {
       return detail;
     }

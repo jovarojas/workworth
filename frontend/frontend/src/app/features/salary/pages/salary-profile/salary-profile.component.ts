@@ -9,7 +9,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailFrom, problemDetailMessage } from '../../../../core/http/problem-detail';
+import { estimatorStatusLabel, incomeSourceLabel } from '../../../../core/presentation/display-labels';
 import {
   ApplicationCurrency,
   ApplicationCurrencyResponse,
@@ -206,6 +207,14 @@ export class SalaryProfileComponent implements OnInit {
     return null;
   }
 
+  incomeSourceLabel(source: SalaryProfileResponse['activeIncomeSource']): string {
+    return incomeSourceLabel(source);
+  }
+
+  estimatorStatusLabel(status: EstimatorStatusResponse['status']): string {
+    return estimatorStatusLabel(status);
+  }
+
   private showProfile(current: CurrentSalaryProfileResponse): void {
     this.profile.set(current.salaryProfile);
     this.profileMonth.set(current.month);
@@ -229,7 +238,9 @@ export class SalaryProfileComponent implements OnInit {
 
   private handleSubmissionError(error: unknown): void {
     const problem = problemDetailFrom(error);
-    this.fieldErrors.set(problem?.fieldErrors ?? {});
+    this.fieldErrors.set(Object.fromEntries(
+      Object.keys(problem?.fieldErrors ?? {}).map((field) => [field, 'El valor introducido no es válido.'])
+    ));
     this.submitError.set(this.errorDetail(error, 'No se ha podido guardar el perfil salarial.'));
   }
 
@@ -238,7 +249,7 @@ export class SalaryProfileComponent implements OnInit {
   }
 
   private errorDetail(error: unknown, fallback: string): string {
-    const detail = problemDetailFrom(error)?.detail;
+    const detail = problemDetailMessage(error);
     return detail || fallback;
   }
 

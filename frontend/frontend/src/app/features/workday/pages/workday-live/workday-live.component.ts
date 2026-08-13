@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize, Observable, Subscription, timer } from 'rxjs';
-import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { problemDetailFrom, problemDetailMessage } from '../../../../core/http/problem-detail';
 import { MealBreakResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
 import { WorkdayApiService } from '../../../../core/services/workday-api.service';
 import { WorkdayIntervalSerializationError, serializeWorkdayInterval } from '../../serializers/workday-interval.serializer';
@@ -271,13 +271,13 @@ export class WorkdayLiveComponent implements OnInit, OnDestroy {
     switch (problem?.code) {
       case 'VALIDATION_ERROR':
       case 'WORKDAY_INTERVAL_INVALID':
-        return problem.detail ?? 'Los datos de la jornada no son válidos.';
+        return problemDetailMessage(error) ?? 'Los datos de la jornada no son válidos.';
       case 'RESOURCE_NOT_FOUND':
-        return problem.detail ?? 'La jornada o la pausa ya no existe.';
+        return problemDetailMessage(error) ?? 'La jornada o la pausa ya no existe.';
       case 'WORKDAY_CONFLICT':
-        return problem.detail ?? 'Esta acción no es válida para el estado actual de la jornada.';
+        return problemDetailMessage(error) ?? 'Esta acción no es válida para el estado actual de la jornada.';
       default:
-        return problem?.detail ?? 'No se ha podido completar la acción de jornada.';
+        return problemDetailMessage(error) ?? 'No se ha podido completar la acción de jornada.';
     }
   }
 }

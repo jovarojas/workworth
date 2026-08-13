@@ -29,7 +29,7 @@ describe('StatisticsPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Horas económicas efectivas');
     expect(fixture.nativeElement.textContent).toContain('Salario medio efectivo por hora');
     expect(fixture.nativeElement.textContent).toContain('Ganancias efectivas totales');
-    expect(fixture.nativeElement.textContent).toContain('Goals completados');
+    expect(fixture.nativeElement.textContent).toContain('Objetivos completados');
   });
 
   it('requests DAY, WEEK, MONTH and YEAR exactly when the granularity changes', () => {
@@ -86,7 +86,7 @@ describe('StatisticsPageComponent', () => {
     } })));
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('The requested Statistics range exceeds the maximum of 366 points.');
+    expect(fixture.nativeElement.textContent).toContain('Revisa los datos introducidos.');
     expect(fixture.nativeElement.textContent).not.toContain('No disponible');
   });
 

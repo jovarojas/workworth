@@ -34,13 +34,13 @@ describe('WorkdayLiveComponent', () => {
     ['ON_MEAL_BREAK', 'En pausa'],
     ['COMPLETED', 'Jornada completada'],
     ['CANCELLED', 'Jornada cancelada']
-  ] as const)('shows the real %s state', (status, label) => {
+  ] as const)('shows the translated %s state', (status, label) => {
     workdays.current.mockReturnValue(of(workday(status)));
 
     const fixture = createComponent();
 
     expect(fixture.nativeElement.textContent).toContain(label);
-    expect(fixture.nativeElement.textContent).toContain(status);
+    expect(fixture.nativeElement.textContent).not.toContain(status);
   });
 
   it('shows economic seconds exactly as received without calculating them', () => {
@@ -143,7 +143,7 @@ describe('WorkdayLiveComponent', () => {
     [404, 'RESOURCE_NOT_FOUND', 'La jornada no existe.'],
     [409, 'WORKDAY_CONFLICT', 'La pausa ya está abierta.'],
     [422, 'WORKDAY_INTERVAL_INVALID', 'El intervalo no es válido.']
-  ] as const)('shows the public %i %s error without hiding the workday', (status, code, detail) => {
+  ] as const)('shows the localized %i %s error without hiding the workday', (status, code, detail) => {
     workdays.current.mockReturnValue(of(workday('ACTIVE')));
     workdays.startMealBreak.mockReturnValue(throwError(() => new HttpErrorResponse({ status, error: { code, detail } })));
 
@@ -151,7 +151,7 @@ describe('WorkdayLiveComponent', () => {
     click(fixture, '[data-testid="start-meal-break"]');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain(detail);
+    expect(fixture.nativeElement.textContent).toContain(localizedMessage(code));
     expect(fixture.nativeElement.textContent).toContain('Jornada activa');
   });
 
@@ -244,7 +244,7 @@ describe('WorkdayLiveComponent', () => {
 
     expect(workdays.current).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.textContent).toContain('En pausa');
-    expect(fixture.nativeElement.textContent).toContain('La pausa ya está abierta.');
+    expect(fixture.nativeElement.textContent).toContain('Esta operación no es posible para el estado actual de la jornada.');
     expect(fixture.nativeElement.querySelector('[data-testid="end-meal-break"]')).not.toBeNull();
   });
 
@@ -263,7 +263,7 @@ describe('WorkdayLiveComponent', () => {
 
     expect(workdays.current).toHaveBeenCalledTimes(2);
     expect(fixture.nativeElement.textContent).toContain('Jornada activa');
-    expect(fixture.nativeElement.textContent).toContain('La pausa ya está abierta.');
+    expect(fixture.nativeElement.textContent).toContain('Esta operación no es posible para el estado actual de la jornada.');
     expect(fixture.nativeElement.textContent).toContain('No se puede conectar con WorkWorth');
   });
 
@@ -398,7 +398,7 @@ describe('WorkdayLiveComponent', () => {
     fixture.componentInstance.createPartialAbsence(fixture.componentInstance.workday()!);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('El intervalo se solapa con una pausa.');
+    expect(fixture.nativeElement.textContent).toContain('El intervalo indicado no es válido.');
     expect(fixture.nativeElement.textContent).toContain('Jornada activa');
   });
 
@@ -449,6 +449,15 @@ describe('WorkdayLiveComponent', () => {
 
     expect(workdays.current).toHaveBeenCalledTimes(1);
   });
+
+  function localizedMessage(code: string): string {
+    return {
+      VALIDATION_ERROR: 'Revisa los datos introducidos.',
+      RESOURCE_NOT_FOUND: 'No se ha encontrado la información solicitada.',
+      WORKDAY_CONFLICT: 'Esta operación no es posible para el estado actual de la jornada.',
+      WORKDAY_INTERVAL_INVALID: 'El intervalo indicado no es válido.'
+    }[code] ?? 'No se ha podido completar la operación.';
+  }
 
   function createComponent() {
     const fixture = TestBed.createComponent(WorkdayLiveComponent);
