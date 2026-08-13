@@ -125,6 +125,12 @@ class WorkdayControllerIntegrationTest {
           .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("GET")))
           .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("POST")))
           .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("PUT")));
+  mvc.perform(options("/api/v1/rewards/1")
+                  .header(HttpHeaders.ORIGIN, "http://localhost:4200")
+                  .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "DELETE"))
+          .andExpect(status().isOk())
+          .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:4200"))
+          .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("DELETE")));
  }
 
  @TestConfiguration
