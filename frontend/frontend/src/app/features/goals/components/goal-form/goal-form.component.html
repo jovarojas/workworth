@@ -1,0 +1,23 @@
+<form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <mat-form-field appearance="outline">
+    <mat-label>Objetivo</mat-label>
+    <input matInput formControlName="title" autocomplete="off" />
+    @if (controlError('title'); as error) { <mat-error>{{ error }}</mat-error> }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Importe objetivo</mat-label>
+    <input matInput formControlName="targetAmount" inputmode="decimal" autocomplete="off" />
+    <mat-hint>Máximo dos decimales.</mat-hint>
+    @if (controlError('targetAmount'); as error) { <mat-error>{{ error }}</mat-error> }
+  </mat-form-field>
+
+  <div class="actions">
+    <button mat-flat-button type="submit" [disabled]="saving">
+      @if (saving) { Guardando… } @else if (editing) { Guardar cambios } @else { Crear objetivo }
+    </button>
+    @if (editing) {
+      <button mat-stroked-button type="button" [disabled]="saving" (click)="cancel()">Cancelar edición</button>
+    }
+  </div>
+</form>

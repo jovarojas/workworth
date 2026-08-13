@@ -2,6 +2,7 @@ export type EarningStatus = 'AVAILABLE' | 'UNAVAILABLE';
 export type EarningPeriod = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL_TIME';
 export type ApplicationCurrency = 'EUR' | 'USD';
 export type RewardStatus = 'PENDING' | 'ACQUIRED';
+export type GoalStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type RewardOutcome = 'AFFORDABLE' | 'SHORTFALL';
 export type DashboardMotivationState = 'EMPTY' | 'AVAILABLE' | 'PROGRESS' | 'UNAVAILABLE';
 export type WorkdayStatus =
@@ -20,6 +21,9 @@ export type ApiErrorCode =
   | 'SALARY_RATE_UNAVAILABLE'
   | 'SALARY_CONFIGURATION_INCOMPLETE'
   | 'APPLICATION_CURRENCY_LOCKED'
+  | 'GOAL_CONFLICT'
+  | 'GOAL_PROGRESS_UNAVAILABLE'
+  | 'GOAL_CURRENCY_MISMATCH'
   | 'REWARD_CONFLICT'
   | 'REWARD_CURRENCY_MISMATCH'
   | 'WORKDAY_CONFLICT'
@@ -64,6 +68,36 @@ export interface UpdateRewardRequest {
   name: string;
   quantity: number;
   price: number;
+}
+
+export interface GoalProgressResponse {
+  evaluable: boolean;
+  progressAmount: number | null;
+  remainingAmount: number | null;
+  progressPercentage: number | null;
+  reached: boolean | null;
+}
+
+export interface GoalResponse {
+  id: number;
+  title: string;
+  targetAmount: number;
+  currencyCode: ApplicationCurrency;
+  status: GoalStatus;
+  createdAt: string;
+  updatedAt: string;
+  closedAt: string | null;
+  progress: GoalProgressResponse | null;
+}
+
+export interface CreateGoalRequest {
+  title: string;
+  targetAmount: number;
+}
+
+export interface UpdateGoalRequest {
+  title: string;
+  targetAmount: number;
 }
 
 export interface RewardRelevanceResponse {

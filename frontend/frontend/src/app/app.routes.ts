@@ -45,6 +45,13 @@ export const routes: Routes = [
     title: 'Recompensas | WorkWorth'
   },
   {
+    path: 'goals',
+    loadComponent: () =>
+      import('./features/goals/pages/goals-page/goals-page.component')
+        .then((module) => module.GoalsPageComponent),
+    title: 'Objetivos | WorkWorth'
+  },
+  {
     path: 'preferences/currency',
     loadComponent: () =>
       import('./features/preferences/pages/currency-settings/currency-settings.component')

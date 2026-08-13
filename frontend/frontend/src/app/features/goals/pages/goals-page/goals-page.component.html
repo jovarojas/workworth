@@ -1,0 +1,98 @@
+<main class="goals-page">
+  <header class="goals-page__header">
+    <p class="eyebrow">OBJETIVOS</p>
+    <h1>Tus objetivos personales</h1>
+    <p>El progreso refleja únicamente las ganancias netas registradas en WorkWorth; no es un saldo ni un ahorro.</p>
+  </header>
+
+  <section class="goal-section" aria-labelledby="active-goals-heading">
+    <header class="goal-section__header">
+      <div>
+        <p class="eyebrow">ACTIVOS</p>
+        <h2 id="active-goals-heading">En marcha</h2>
+      </div>
+      <button mat-stroked-button type="button" [disabled]="activeLoading()" (click)="loadActive()">Actualizar</button>
+    </header>
+    @if (activeLoading() && activeGoals().length === 0) {
+      <div class="loading" aria-live="polite"><mat-spinner diameter="28" /> Cargando objetivos…</div>
+    }
+    @if (activeError(); as errorMessage) {
+      <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+    }
+    @if (!activeLoading() && !activeError() && activeGoals().length === 0) {
+      <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">flag</mat-icon><p>Aún no tienes objetivos activos.</p></div>
+    }
+    @if (activeGoals().length > 0) {
+      <div class="goal-grid" aria-label="Objetivos activos">
+        @for (goal of activeGoals(); track goal.id) {
+          <mat-card class="goal-card">
+            <mat-card-content>
+              <div class="goal-card__heading"><h3>{{ goal.title }}</h3><span>{{ goal.status }}</span></div>
+              <strong>{{ goal.targetAmount | currency:goal.currencyCode:'symbol':'1.2-2' }}</strong>
+              <small>{{ goal.currencyCode }} · Importe objetivo</small>
+              @if (goal.progress; as progress) {
+                @if (progress.evaluable) {
+                  <dl class="goal-progress">
+                    <div><dt>Registrado</dt><dd>{{ progress.progressAmount | currency:goal.currencyCode:'symbol':'1.2-2' }}</dd></div>
+                    <div><dt>Restante</dt><dd>{{ progress.remainingAmount | currency:goal.currencyCode:'symbol':'1.2-2' }}</dd></div>
+                    <div><dt>Progreso</dt><dd>{{ progress.progressPercentage }}%</dd></div>
+                  </dl>
+                }
+                <p class="goal-card__progress" aria-live="polite">{{ progressText(goal) }}</p>
+              }
+              <div class="goal-card__actions">
+                <button mat-stroked-button type="button" [disabled]="isActionInProgress(goal.id)" (click)="edit(goal)">Editar</button>
+                <button mat-stroked-button type="button" color="warn" [disabled]="isActionInProgress(goal.id)" (click)="cancel(goal)">Cancelar</button>
+                @if (goal.progress?.reached) {
+                  <button mat-flat-button type="button" [disabled]="isActionInProgress(goal.id)" (click)="complete(goal)">
+                    @if (isActionInProgress(goal.id)) { Guardando… } @else { Marcar como completado }
+                  </button>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="goal-section" aria-labelledby="history-heading">
+    <header class="goal-section__header">
+      <div><p class="eyebrow">HISTORIAL</p><h2 id="history-heading">Cerrados</h2></div>
+      <button mat-stroked-button type="button" [disabled]="historyLoading()" (click)="loadHistory()">Actualizar</button>
+    </header>
+    @if (historyLoading() && historyGoals().length === 0) {
+      <div class="loading" aria-live="polite"><mat-spinner diameter="28" /> Cargando historial…</div>
+    }
+    @if (historyError(); as errorMessage) {
+      <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+    }
+    @if (!historyLoading() && !historyError() && historyGoals().length === 0) {
+      <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">history</mat-icon><p>Los objetivos completados o cancelados aparecerán aquí.</p></div>
+    }
+    @if (historyGoals().length > 0) {
+      <div class="goal-grid" aria-label="Historial de objetivos">
+        @for (goal of historyGoals(); track goal.id) {
+          <mat-card class="goal-card goal-card--closed">
+            <mat-card-content>
+              <div class="goal-card__heading"><h3>{{ goal.title }}</h3><span>{{ goal.status }}</span></div>
+              <strong>{{ goal.targetAmount | currency:goal.currencyCode:'symbol':'1.2-2' }}</strong>
+              <small>{{ goal.currencyCode }} · Objetivo cerrado</small>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="goal-section goal-form-section" aria-labelledby="goal-form-heading">
+    <mat-card><mat-card-content>
+      <p class="eyebrow">{{ editingGoal() ? 'EDITAR OBJETIVO' : 'NUEVO OBJETIVO' }}</p>
+      <h2 id="goal-form-heading">{{ editingGoal() ? 'Actualiza tu objetivo' : 'Define un objetivo personal' }}</h2>
+      <p>El progreso se resolverá con las ganancias netas registradas en WorkWorth.</p>
+      <app-goal-form [goal]="editingGoal()" [saving]="formSaving()" (submitted)="saveGoal($event)" (cancelled)="cancelEdit()" />
+      @if (actionError(); as errorMessage) { <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p> }
+      @if (actionSuccess(); as successMessage) { <p class="feedback feedback--success" aria-live="polite">{{ successMessage }}</p> }
+    </mat-card-content></mat-card>
+  </section>
+</main>
