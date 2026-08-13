@@ -12,6 +12,10 @@ import com.workworth.workday.exception.WorkdayConflictException;
 import com.workworth.workday.exception.WorkdayIntervalValidationException;
 import com.workworth.workday.exception.WorkdayNotFoundException;
 import com.workworth.earnings.exception.EarningNotFoundException;
+import com.workworth.goals.exception.GoalConflictException;
+import com.workworth.goals.exception.GoalCurrencyMismatchException;
+import com.workworth.goals.exception.GoalNotFoundException;
+import com.workworth.goals.exception.GoalProgressUnavailableException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -84,6 +88,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RewardCurrencyMismatchException.class)
     ProblemDetail handleRewardCurrencyMismatch(RewardCurrencyMismatchException exception) {
         return problem(HttpStatus.CONFLICT, ApiErrorCode.REWARD_CURRENCY_MISMATCH, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalNotFoundException.class)
+    ProblemDetail handleGoalNotFound(GoalNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalConflictException.class)
+    ProblemDetail handleGoalConflict(GoalConflictException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalProgressUnavailableException.class)
+    ProblemDetail handleGoalProgressUnavailable(GoalProgressUnavailableException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_PROGRESS_UNAVAILABLE, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalCurrencyMismatchException.class)
+    ProblemDetail handleGoalCurrencyMismatch(GoalCurrencyMismatchException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_CURRENCY_MISMATCH, exception.getMessage());
     }
 
     @ExceptionHandler(WorkdayNotFoundException.class)
