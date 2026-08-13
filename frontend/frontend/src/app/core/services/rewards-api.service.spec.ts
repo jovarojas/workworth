@@ -76,6 +76,31 @@ describe('RewardsApiService', () => {
     request.flush({ ...reward(), status: 'ACQUIRED' });
   });
 
+  it('requests a reward relevance using the exact POST endpoint', () => {
+    service.relevance(4).subscribe();
+
+    const request = http.expectOne('http://api.test/api/v1/rewards/4/relevance');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toBeNull();
+    request.flush(relevance());
+  });
+
+  it('requests the relevant combination without selecting contexts locally', () => {
+    service.relevantCombination().subscribe();
+
+    const request = http.expectOne('http://api.test/api/v1/rewards/combinations/relevance');
+    expect(request.request.method).toBe('GET');
+    request.flush({ evaluable: true, combination: combination() });
+  });
+
+  it('requests another combination with repeated exclusion query parameters', () => {
+    service.combination('WEEK', [4, 7]).subscribe();
+
+    const request = http.expectOne('http://api.test/api/v1/rewards/combinations/WEEK?excludeRewardIds=4&excludeRewardIds=7');
+    expect(request.request.method).toBe('GET');
+    request.flush(combination());
+  });
+
   it('propagates HTTP errors to callers', () => {
     let receivedStatus: number | undefined;
     service.list('PENDING').subscribe({ error: (error) => receivedStatus = error.status });
@@ -90,6 +115,21 @@ describe('RewardsApiService', () => {
     return {
       id: 4, name: 'Auriculares', quantity: 1, price: 120, currencyCode: 'EUR', status: 'PENDING',
       lastReachedContext: null, createdAt: '2026-08-12T10:00:00Z', updatedAt: '2026-08-12T10:00:00Z'
+    };
+  }
+
+  function relevance() {
+    return {
+      rewardId: 4, evaluable: true, relevantContext: 'WEEK', progressContext: null,
+      outcome: 'AFFORDABLE', availableAmount: 120, price: 120, currencyCode: 'EUR',
+      surplus: 0, shortfall: null, newlyReached: false, previousReachedContext: null
+    };
+  }
+
+  function combination() {
+    return {
+      context: 'WEEK', evaluable: true, availableAmount: 120, totalPrice: 100,
+      currencyCode: 'EUR', rewards: [reward(), { ...reward(), id: 7 }]
     };
   }
 });

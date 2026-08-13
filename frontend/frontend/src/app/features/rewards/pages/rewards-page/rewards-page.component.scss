@@ -26,6 +26,7 @@
 .reward-form-section__detail { margin: 0 0 1.25rem; color: #56627a; }
 
 .reward-section { margin-top: 2.5rem; }
+.reward-section--recent { margin-top: 0; }
 
 .reward-section__header,
 .reward-card__heading,
@@ -51,6 +52,14 @@
 .reward-card small { color: #697586; }
 .reward-card__actions { flex-wrap: wrap; justify-content: flex-start; margin-top: 1.5rem; }
 .reward-card--acquired { background: #f8fafc; }
+.reward-card--recent,
+.combination-card { border: 1px solid #cfd8ff; border-radius: 1rem; box-shadow: none; background: #f7f8ff; }
+.reward-card__relevance { margin: 1rem 0 0; color: #384860; }
+
+.combination-card p { color: #384860; }
+.combination-card ul { margin: 1rem 0; padding-left: 1.2rem; }
+.combination-card li + li { margin-top: .35rem; }
+.combination-card__amounts { font-weight: 700; }
 
 .loading,
 .feedback,

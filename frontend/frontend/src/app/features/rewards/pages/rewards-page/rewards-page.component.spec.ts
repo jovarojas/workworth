@@ -1,7 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
-import { CreateRewardRequest, RewardResponse, RewardStatus } from '../../../../core/models/workworth-api.models';
+import {
+  CreateRewardRequest,
+  EarningPeriod,
+  RewardCombinationResponse,
+  RewardRelevanceResponse,
+  RewardResponse,
+  RewardStatus
+} from '../../../../core/models/workworth-api.models';
 import { RewardsApiService } from '../../../../core/services/rewards-api.service';
 import { RewardsPageComponent } from './rewards-page.component';
 
@@ -9,16 +16,13 @@ describe('RewardsPageComponent', () => {
   let fixture: ComponentFixture<RewardsPageComponent>;
   let component: RewardsPageComponent;
   const rewardsApi = {
-    list: vi.fn(),
-    get: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    acquire: vi.fn()
+    list: vi.fn(), get: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), acquire: vi.fn(),
+    relevance: vi.fn(), relevantCombination: vi.fn(), combination: vi.fn()
   };
 
   const pendingReward = reward(1, 'Auriculares', 'PENDING', 1, 120);
-  const acquiredReward = reward(2, 'Libro', 'ACQUIRED', 2, 30);
+  const secondPendingReward = reward(3, 'Libro', 'PENDING', 2, 30);
+  const acquiredReward = reward(2, 'Cena', 'ACQUIRED', 1, 40);
 
   beforeEach(async () => {
     Object.values(rewardsApi).forEach((method) => method.mockReset());
@@ -27,6 +31,9 @@ describe('RewardsPageComponent', () => {
     rewardsApi.update.mockReturnValue(of(pendingReward));
     rewardsApi.delete.mockReturnValue(of(void 0));
     rewardsApi.acquire.mockReturnValue(of(acquiredReward));
+    rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id)));
+    rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: true, combination: null }));
+    rewardsApi.combination.mockReturnValue(of(noCombination('WEEK')));
 
     await TestBed.configureTestingModule({
       imports: [RewardsPageComponent],
@@ -37,130 +44,175 @@ describe('RewardsPageComponent', () => {
     component = fixture.componentInstance;
   });
 
-  it('loads and keeps pending and acquired rewards in separate sections', () => {
+  it('loads relevance once per pending reward and keeps the CRUD lists separated', () => {
+    rewardsApi.list.mockImplementation((status?: RewardStatus) => of(status === 'PENDING'
+      ? [pendingReward, secondPendingReward] : [acquiredReward]));
+    rewardsApi.relevance.mockImplementation((id: number) => of(relevance(id)));
     fixture.detectChanges();
 
-    expect(rewardsApi.list).toHaveBeenCalledWith('PENDING');
-    expect(rewardsApi.list).toHaveBeenCalledWith('ACQUIRED');
+    expect(rewardsApi.relevance).toHaveBeenCalledTimes(2);
+    expect(rewardsApi.relevance).toHaveBeenCalledWith(pendingReward.id);
+    expect(rewardsApi.relevance).toHaveBeenCalledWith(secondPendingReward.id);
     expect(fixture.nativeElement.textContent).toContain('PENDIENTES');
     expect(fixture.nativeElement.textContent).toContain('CONSEGUIDAS');
+  });
+
+  it('presents an affordable relevance decided by the backend', () => {
+    rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id, { relevantContext: 'WEEK', outcome: 'AFFORDABLE' })));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Puedes conseguirla con lo registrado en WEEK.');
+  });
+
+  it('presents the backend shortfall without calculating it locally', () => {
+    rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id, {
+      progressContext: 'TODAY', outcome: 'SHORTFALL', shortfall: 35, relevantContext: null
+    })));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Te faltan 35 EUR para conseguirla.');
+  });
+
+  it('highlights a newly reached reward without a previous context', () => {
+    rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id, { newlyReached: true, relevantContext: 'MONTH' })));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Ahora están a tu alcance');
+    expect(fixture.nativeElement.textContent).toContain('Ahora puedes conseguir Auriculares (120 EUR).');
+  });
+
+  it('shows a context improvement for a newly reached reward', () => {
+    rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id, {
+      newlyReached: true, relevantContext: 'WEEK', previousReachedContext: 'MONTH'
+    })));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Antes la alcanzabas en MONTH; ahora también la alcanzas en WEEK.');
+  });
+
+  it('keeps an unevaluable reward visible with its contextual message', () => {
+    rewardsApi.relevance.mockReturnValue(of(relevance(pendingReward.id, {
+      evaluable: false, relevantContext: null, progressContext: null, outcome: null
+    })));
+    fixture.detectChanges();
+
     expect(fixture.nativeElement.textContent).toContain('Auriculares');
-    expect(fixture.nativeElement.textContent).toContain('2 Libro');
+    expect(fixture.nativeElement.textContent).toContain('Ahora mismo no podemos evaluar esta recompensa');
   });
 
-  it('shows independent empty states', () => {
-    rewardsApi.list.mockReturnValue(of([]));
+  it('keeps a reward visible when its relevance request fails', () => {
+    rewardsApi.relevance.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Aún no tienes recompensas pendientes.');
-    expect(fixture.nativeElement.textContent).toContain('Aún no has marcado recompensas como conseguidas.');
+    expect(fixture.nativeElement.textContent).toContain('Auriculares');
+    expect(fixture.nativeElement.textContent).toContain('No se puede conectar con WorkWorth');
   });
 
-  it('creates a reward and refreshes both lists', () => {
+  it('keeps several newly reached rewards in backend list order', () => {
+    rewardsApi.list.mockImplementation((status?: RewardStatus) => of(status === 'PENDING'
+      ? [pendingReward, secondPendingReward] : []));
+    rewardsApi.relevance.mockImplementation((id: number) => of(relevance(id, { newlyReached: true, relevantContext: 'WEEK' })));
     fixture.detectChanges();
-    const request: CreateRewardRequest = { name: 'Cena', quantity: 1, price: 50 };
 
-    component.saveReward(request);
-
-    expect(rewardsApi.create).toHaveBeenCalledWith(request);
-    expect(rewardsApi.list).toHaveBeenCalledTimes(4);
-    expect(component.actionSuccess()).toBe('Recompensa añadida.');
+    expect(component.recentlyReached().map((reward) => reward.id)).toEqual([1, 3]);
   });
 
-  it('updates the selected pending reward', () => {
+  it('shows a relevant combination supplied by the backend', () => {
+    rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: true, combination: combination('MONTH') }));
     fixture.detectChanges();
-    const request: CreateRewardRequest = { name: 'Auriculares nuevos', quantity: 1, price: 130 };
 
-    component.edit(pendingReward);
-    component.saveReward(request);
-
-    expect(rewardsApi.update).toHaveBeenCalledWith(pendingReward.id, request);
-    expect(component.actionSuccess()).toBe('Recompensa actualizada.');
+    expect(fixture.nativeElement.textContent).toContain('Con lo registrado en MONTH puedes conseguir:');
+    expect(fixture.nativeElement.textContent).toContain('Total:');
+    expect(fixture.nativeElement.textContent).toContain('Disponible:');
   });
 
-  it('does not delete when confirmation is declined', () => {
+  it('distinguishes evaluable contexts with no relevant combination', () => {
     fixture.detectChanges();
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
 
-    component.confirmDelete(pendingReward);
-
-    expect(rewardsApi.delete).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('Aún no hay una combinación de recompensas disponible.');
   });
 
-  it('deletes after confirmation and refreshes both lists', () => {
+  it('distinguishes all contexts being unavailable', () => {
+    rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: false, combination: null }));
     fixture.detectChanges();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    component.confirmDelete(pendingReward);
-
-    expect(rewardsApi.delete).toHaveBeenCalledWith(pendingReward.id);
-    expect(rewardsApi.list).toHaveBeenCalledTimes(4);
+    expect(fixture.nativeElement.textContent).toContain('Ahora mismo no podemos evaluar combinaciones');
   });
 
-  it('acquires a reward and refreshes the pending and acquired lists', () => {
+  it('requests another combination with the current context and visible reward ids', () => {
+    rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: true, combination: combination('WEEK') }));
+    rewardsApi.combination.mockReturnValue(of(combination('WEEK', [reward(8, 'Museo', 'PENDING', 1, 25), reward(9, 'Cine', 'PENDING', 1, 20)])));
     fixture.detectChanges();
 
+    component.requestAnotherCombination();
+
+    expect(rewardsApi.combination).toHaveBeenCalledWith('WEEK', [1, 3]);
+    expect(component.relevantCombination()?.rewards.map((reward) => reward.id)).toEqual([8, 9]);
+  });
+
+  it('keeps the visible combination when there is no alternative', () => {
+    rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: true, combination: combination('WEEK') }));
+    rewardsApi.combination.mockReturnValue(of(noCombination('WEEK')));
+    fixture.detectChanges();
+
+    component.requestAnotherCombination();
+    fixture.detectChanges();
+
+    expect(component.relevantCombination()?.rewards.map((reward) => reward.id)).toEqual([1, 3]);
+    expect(fixture.nativeElement.textContent).toContain('No hay otra combinación válida para este contexto.');
+  });
+
+  it('keeps reward lists visible when the relevant combination request fails', () => {
+    rewardsApi.relevantCombination.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Auriculares');
+    expect(fixture.nativeElement.textContent).toContain('No se puede conectar con WorkWorth');
+  });
+
+  it('prevents duplicate requests while an alternative combination is pending', () => {
+    const nextCombination = new Subject<RewardCombinationResponse>();
+    rewardsApi.relevantCombination.mockReturnValue(of({ evaluable: true, combination: combination('WEEK') }));
+    rewardsApi.combination.mockReturnValue(nextCombination);
+    fixture.detectChanges();
+
+    component.requestAnotherCombination();
+    component.requestAnotherCombination();
+
+    expect(rewardsApi.combination).toHaveBeenCalledTimes(1);
+    nextCombination.complete();
+  });
+
+  it('still refreshes CRUD lists after an acquisition', () => {
+    fixture.detectChanges();
     component.acquire(pendingReward);
 
     expect(rewardsApi.acquire).toHaveBeenCalledWith(pendingReward.id);
     expect(rewardsApi.list).toHaveBeenCalledTimes(4);
-    expect(component.actionSuccess()).toBe('Recompensa marcada como conseguida.');
-  });
-
-  it('does not render mutable actions for acquired rewards', () => {
-    rewardsApi.list.mockImplementation((status?: RewardStatus) => of(status === 'PENDING' ? [] : [acquiredReward]));
-    fixture.detectChanges();
-
-    const acquiredSection = fixture.nativeElement.querySelector(
-      'section[aria-labelledby="acquired-heading"]'
-    ) as HTMLElement;
-    expect(acquiredSection.textContent).not.toContain('Editar');
-    expect(acquiredSection.textContent).not.toContain('Eliminar');
-    expect(acquiredSection.textContent).not.toContain('Marcar como conseguida');
-  });
-
-  it('keeps acquired rewards visible when loading pending rewards fails', () => {
-    rewardsApi.list.mockImplementation((status?: RewardStatus) => status === 'PENDING'
-      ? throwError(() => new HttpErrorResponse({ status: 0 }))
-      : of([acquiredReward]));
-    fixture.detectChanges();
-
-    expect(component.pending()).toEqual([]);
-    expect(component.acquired()).toEqual([acquiredReward]);
-    expect(component.pendingError()).toContain('No se puede conectar');
-  });
-
-  it('keeps an action disabled while its request is pending', () => {
-    const deletion = new Subject<void>();
-    rewardsApi.delete.mockReturnValue(deletion);
-    fixture.detectChanges();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-
-    component.confirmDelete(pendingReward);
-
-    expect(component.isActionInProgress(pendingReward.id)).toBe(true);
-    component.confirmDelete(pendingReward);
-    expect(rewardsApi.delete).toHaveBeenCalledTimes(1);
-    deletion.complete();
   });
 });
 
-function reward(
-  id: number,
-  name: string,
-  status: RewardStatus,
-  quantity: number,
-  price: number
-): RewardResponse {
+function reward(id: number, name: string, status: RewardStatus, quantity: number, price: number): RewardResponse {
   return {
-    id,
-    name,
-    quantity,
-    price,
-    currencyCode: 'EUR',
-    status,
-    lastReachedContext: null,
-    createdAt: '2026-08-12T09:00:00Z',
-    updatedAt: '2026-08-12T09:00:00Z'
+    id, name, status, quantity, price, currencyCode: 'EUR', lastReachedContext: null,
+    createdAt: '2026-08-13T09:00:00Z', updatedAt: '2026-08-13T09:00:00Z'
   };
+}
+
+function relevance(rewardId: number, changes: Partial<RewardRelevanceResponse> = {}): RewardRelevanceResponse {
+  return {
+    rewardId, evaluable: true, relevantContext: 'WEEK', progressContext: null, outcome: 'AFFORDABLE',
+    availableAmount: 140, price: 120, currencyCode: 'EUR', surplus: 20, shortfall: null,
+    newlyReached: false, previousReachedContext: null, ...changes
+  };
+}
+
+function combination(context: EarningPeriod, rewards: RewardResponse[] = [
+  reward(1, 'Auriculares', 'PENDING', 1, 60), reward(3, 'Libro', 'PENDING', 2, 30)
+]): RewardCombinationResponse {
+  return { context, evaluable: true, availableAmount: 120, totalPrice: 90, currencyCode: 'EUR', rewards };
+}
+
+function noCombination(context: EarningPeriod): RewardCombinationResponse {
+  return { context, evaluable: true, availableAmount: 120, totalPrice: null, currencyCode: 'EUR', rewards: [] };
 }

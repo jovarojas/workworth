@@ -4,6 +4,10 @@ import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../config/api.config';
 import {
   CreateRewardRequest,
+  EarningPeriod,
+  RewardCombinationRelevanceResponse,
+  RewardCombinationResponse,
+  RewardRelevanceResponse,
   RewardResponse,
   RewardStatus,
   UpdateRewardRequest
@@ -37,5 +41,19 @@ export class RewardsApiService {
 
   acquire(id: number): Observable<RewardResponse> {
     return this.http.post<RewardResponse>(`${this.apiBaseUrl}/rewards/${id}/acquire`, null);
+  }
+
+  relevance(id: number): Observable<RewardRelevanceResponse> {
+    return this.http.post<RewardRelevanceResponse>(`${this.apiBaseUrl}/rewards/${id}/relevance`, null);
+  }
+
+  relevantCombination(): Observable<RewardCombinationRelevanceResponse> {
+    return this.http.get<RewardCombinationRelevanceResponse>(`${this.apiBaseUrl}/rewards/combinations/relevance`);
+  }
+
+  combination(context: EarningPeriod, excludeRewardIds: number[]): Observable<RewardCombinationResponse> {
+    let params = new HttpParams();
+    excludeRewardIds.forEach((id) => params = params.append('excludeRewardIds', id));
+    return this.http.get<RewardCombinationResponse>(`${this.apiBaseUrl}/rewards/combinations/${context}`, { params });
   }
 }
