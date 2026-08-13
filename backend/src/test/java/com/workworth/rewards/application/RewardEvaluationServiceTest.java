@@ -79,6 +79,78 @@ class RewardEvaluationServiceTest {
     }
 
     @Test
+    void persistsTheFirstReachedWeekContext() {
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.WEEK);
+
+        assertThat(relevance.newlyReached()).isTrue();
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.WEEK);
+    }
+
+    @Test
+    void keepsWeekWhenOnlyMonthIsNowAffordable() {
+        reward.updateLastReachedContext(EarningPeriod.WEEK, Instant.EPOCH);
+
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.MONTH);
+
+        assertThat(relevance.newlyReached()).isFalse();
+        assertThat(relevance.previousReachedContext()).isEqualTo(EarningPeriod.WEEK);
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.WEEK);
+    }
+
+    @Test
+    void upgradesMonthToWeek() {
+        reward.updateLastReachedContext(EarningPeriod.MONTH, Instant.EPOCH);
+
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.WEEK);
+
+        assertThat(relevance.newlyReached()).isTrue();
+        assertThat(relevance.previousReachedContext()).isEqualTo(EarningPeriod.MONTH);
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.WEEK);
+    }
+
+    @Test
+    void keepsTodayWhenWeekIsNowAffordable() {
+        reward.updateLastReachedContext(EarningPeriod.TODAY, Instant.EPOCH);
+
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.WEEK);
+
+        assertThat(relevance.newlyReached()).isFalse();
+        assertThat(relevance.previousReachedContext()).isEqualTo(EarningPeriod.TODAY);
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.TODAY);
+    }
+
+    @Test
+    void upgradesWeekToToday() {
+        reward.updateLastReachedContext(EarningPeriod.WEEK, Instant.EPOCH);
+
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.TODAY);
+
+        assertThat(relevance.newlyReached()).isTrue();
+        assertThat(relevance.previousReachedContext()).isEqualTo(EarningPeriod.WEEK);
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.TODAY);
+    }
+
+    @Test
+    void keepsTodayWhenOnlyMonthIsNowAffordable() {
+        reward.updateLastReachedContext(EarningPeriod.TODAY, Instant.EPOCH);
+
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.MONTH);
+
+        assertThat(relevance.newlyReached()).isFalse();
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.TODAY);
+    }
+
+    @Test
+    void keepsMonthWhenOnlyAllTimeIsNowAffordable() {
+        reward.updateLastReachedContext(EarningPeriod.MONTH, Instant.EPOCH);
+
+        var relevance = relevanceWithFirstAffordableContext(EarningPeriod.ALL_TIME);
+
+        assertThat(relevance.newlyReached()).isFalse();
+        assertThat(reward.getLastReachedContext()).isEqualTo(EarningPeriod.MONTH);
+    }
+
+    @Test
     void usesTheFirstEvaluableContextForProgressAndSkipsUnavailableContexts() {
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(unavailable(EarningPeriod.TODAY));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "85.00"));
@@ -128,5 +200,13 @@ class RewardEvaluationServiceTest {
     private EarningPeriodSummary unavailable(EarningPeriod context) {
         return new EarningPeriodSummary(context, EarningStatus.UNAVAILABLE, LocalDate.now(), LocalDate.now().plusDays(1),
             null, null, null);
+    }
+
+    private RewardRelevance relevanceWithFirstAffordableContext(EarningPeriod target) {
+        for (EarningPeriod context : EarningPeriod.values()) {
+            when(periods.summarize(context)).thenReturn(available(context,
+                context == target ? "120.00" : "0.00"));
+        }
+        return service.relevance(4L);
     }
 }

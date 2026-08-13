@@ -52,7 +52,9 @@ public class RewardEvaluationService {
             if (evaluation.outcome() == RewardOutcome.AFFORDABLE) {
                 var previous = reward.getLastReachedContext();
                 boolean newlyReached = previous == null || context.ordinal() < previous.ordinal();
-                reward.updateLastReachedContext(context, clock.instant());
+                if (newlyReached) {
+                    reward.updateLastReachedContext(context, clock.instant());
+                }
                 return relevance(reward, evaluation, context, null, newlyReached, previous);
             }
         }
