@@ -34,7 +34,7 @@ public class RewardEvaluationService {
     }
 
     public RewardEvaluation evaluate(Long rewardId, EarningPeriod context) {
-        return evaluate(rewards.pending(rewardId), context);
+        return evaluate(rewards.pending(rewardId), periods.summarize(context));
     }
 
     @Transactional
@@ -42,7 +42,7 @@ public class RewardEvaluationService {
         Reward reward = rewards.pendingForUpdate(rewardId);
         RewardEvaluation firstEvaluable = null;
         for (EarningPeriod context : EarningPeriod.values()) {
-            RewardEvaluation evaluation = evaluate(reward, context);
+            RewardEvaluation evaluation = evaluate(reward, periods.summarize(context));
             if (!evaluation.evaluable()) {
                 continue;
             }
@@ -66,8 +66,8 @@ public class RewardEvaluationService {
             reward.getLastReachedContext());
     }
 
-    RewardEvaluation evaluate(Reward reward, EarningPeriod context) {
-        EarningPeriodSummary summary = periods.summarize(context);
+    public RewardEvaluation evaluate(Reward reward, EarningPeriodSummary summary) {
+        EarningPeriod context = summary.period();
         if (summary.status() == EarningStatus.UNAVAILABLE) {
             return new RewardEvaluation(reward.getId(), context, false, null, null, reward.getPrice(),
                 reward.getCurrencyCode(), null, null);
