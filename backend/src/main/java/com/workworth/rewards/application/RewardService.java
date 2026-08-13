@@ -65,7 +65,7 @@ public class RewardService {
 
     @Transactional
     public Reward acquire(Long id) {
-        Reward reward = get(id);
+        Reward reward = getForUpdate(id);
         reward.acquire(clock.instant());
         return reward;
     }
@@ -74,6 +74,16 @@ public class RewardService {
         Reward reward = get(id);
         requirePending(reward, "Only pending rewards can be evaluated.");
         return reward;
+    }
+
+    Reward pendingForUpdate(Long id) {
+        Reward reward = getForUpdate(id);
+        requirePending(reward, "Only pending rewards can be evaluated.");
+        return reward;
+    }
+
+    private Reward getForUpdate(Long id) {
+        return rewards.findByIdForUpdate(id).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
     }
 
     private void requirePending(Reward reward, String message) {

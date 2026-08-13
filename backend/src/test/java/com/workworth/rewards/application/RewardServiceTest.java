@@ -46,7 +46,7 @@ class RewardServiceTest {
     void acquiresRewardIdempotently() {
         RewardRepository rewards = mock(RewardRepository.class);
         Reward reward = new Reward("Libro", 1, new BigDecimal("20.00"), "EUR", Instant.EPOCH);
-        when(rewards.findById(8L)).thenReturn(Optional.of(reward));
+        when(rewards.findByIdForUpdate(8L)).thenReturn(Optional.of(reward));
         RewardService service = new RewardService(rewards, mock(ApplicationCurrencyProvider.class),
             mock(ApplicationCurrencyService.class), clock());
 

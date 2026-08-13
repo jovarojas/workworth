@@ -33,6 +33,7 @@ class RewardEvaluationServiceTest {
     @BeforeEach
     void setUp() {
         when(rewards.pending(4L)).thenReturn(reward);
+        when(rewards.pendingForUpdate(4L)).thenReturn(reward);
         when(currency.currentCurrency()).thenReturn(ApplicationCurrency.EUR);
         service = new RewardEvaluationService(rewards, periods, currency,
             Clock.fixed(Instant.parse("2026-08-12T10:00:00Z"), ZoneOffset.UTC));

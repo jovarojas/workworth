@@ -39,7 +39,7 @@ public class RewardEvaluationService {
 
     @Transactional
     public RewardRelevance relevance(Long rewardId) {
-        Reward reward = rewards.pending(rewardId);
+        Reward reward = rewards.pendingForUpdate(rewardId);
         RewardEvaluation firstEvaluable = null;
         for (EarningPeriod context : EarningPeriod.values()) {
             RewardEvaluation evaluation = evaluate(reward, context);
