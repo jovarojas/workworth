@@ -1,6 +1,6 @@
 # SPEC 006: Personal Goals
 
-**Status:** Approved
+**Status:** Verified
 **Owner:** WorkWorth
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Salary net estimation](001-salary-net-estimation.md), [Earnings and earning periods](003-earnings-and-earning-periods.md), [Reward affordability](004-reward-affordability.md), [Motivational dashboard](005-dashboard.md), [Development roadmap](../../TASKS.md)
 
@@ -38,17 +38,17 @@ Goals use only effective, registered net Earnings. Salary rates, Workday interva
 
 ## Functional requirements
 
-- [ ] A Goal belongs to the implicit single user of the MVP and is independent from every Reward.
-- [ ] A Goal has a required title and a strictly positive target amount.
-- [ ] A Goal currency comes exclusively from the global application currency and is not selected independently by the user.
-- [ ] An active Goal exposes dynamic progress derived only from the effective `ALL_TIME` Earnings result.
-- [ ] Reaching 100% progress never completes a Goal automatically.
-- [ ] The user may manually mark a reached active Goal as `COMPLETED`.
-- [ ] The user may cancel an active Goal, which closes it as `CANCELLED`.
-- [ ] Only an active Goal may be edited; title and target amount are editable.
-- [ ] Closed Goals form the Goal history and do not retain progress snapshots or change events.
-- [ ] If `ALL_TIME` is unavailable, an active Goal exposes an unavailable progress state without invented monetary values.
-- [ ] Angular renders backend-resolved progress and never calculates money, percentages, remaining amounts, or lifecycle eligibility.
+- [x] A Goal belongs to the implicit single user of the MVP and is independent from every Reward.
+- [x] A Goal has a required title and a strictly positive target amount.
+- [x] A Goal currency comes exclusively from the global application currency and is not selected independently by the user.
+- [x] An active Goal exposes dynamic progress derived only from the effective `ALL_TIME` Earnings result.
+- [x] Reaching 100% progress never completes a Goal automatically.
+- [x] The user may manually mark a reached active Goal as `COMPLETED`.
+- [x] The user may cancel an active Goal, which closes it as `CANCELLED`.
+- [x] Only an active Goal may be edited; title and target amount are editable.
+- [x] Closed Goals form the Goal history and do not retain progress snapshots or change events.
+- [x] If `ALL_TIME` is unavailable, an active Goal exposes an unavailable progress state without invented monetary values.
+- [x] Angular renders backend-resolved progress and never calculates money, percentages, remaining amounts, or lifecycle eligibility.
 
 ## Goal model and lifecycle
 
@@ -178,18 +178,18 @@ An error in a Goal request must not hide already valid Goal lists or progress re
 
 ## Acceptance criteria
 
-- [ ] A Goal persists a required title, a strictly positive target amount, the global currency snapshot, an allowed lifecycle state, and technical timestamps.
-- [ ] A Goal has no user-selectable currency and no Goal-to-Reward relationship.
-- [ ] Active Goal progress uses only the current effective `ALL_TIME` Earnings result.
-- [ ] Progress is not presented as a bank balance, savings, or available money.
-- [ ] `ALL_TIME` unavailable produces an explicit unavailable progress result with no invented monetary values.
-- [ ] Reaching the target does not complete a Goal automatically.
-- [ ] The backend permits manual completion only for an active Goal whose current progress is reached.
-- [ ] The backend permits an active Goal to be cancelled and retains completed/cancelled Goals as history.
-- [ ] Closed Goals cannot be edited, reopened, deleted, or dynamically re-evaluated in the MVP.
-- [ ] Editing an active Goal changes only title and target amount; later reads resolve progress against current effective `ALL_TIME` without keeping the prior target.
-- [ ] No progress snapshots, change events, Reward mutations, currency conversion, statistics, charts, AI, or gamification are introduced.
-- [ ] Angular contains no Goal economic calculation, currency conversion, or automatic lifecycle decision.
+- [x] A Goal persists a required title, a strictly positive target amount, the global currency snapshot, an allowed lifecycle state, and technical timestamps.
+- [x] A Goal has no user-selectable currency and no Goal-to-Reward relationship.
+- [x] Active Goal progress uses only the current effective `ALL_TIME` Earnings result.
+- [x] Progress is not presented as a bank balance, savings, or available money.
+- [x] `ALL_TIME` unavailable produces an explicit unavailable progress result with no invented monetary values.
+- [x] Reaching the target does not complete a Goal automatically.
+- [x] The backend permits manual completion only for an active Goal whose current progress is reached.
+- [x] The backend permits an active Goal to be cancelled and retains completed/cancelled Goals as history.
+- [x] Closed Goals cannot be edited, reopened, deleted, or dynamically re-evaluated in the MVP.
+- [x] Editing an active Goal changes only title and target amount; later reads resolve progress against current effective `ALL_TIME` without keeping the prior target.
+- [x] No progress snapshots, change events, Reward mutations, currency conversion, statistics, charts, AI, or gamification are introduced.
+- [x] Angular contains no Goal economic calculation, currency conversion, or automatic lifecycle decision.
 
 ## Technical considerations
 
@@ -227,4 +227,4 @@ An error in a Goal request must not hide already valid Goal lists or progress re
 
 ## Traceability and verification
 
-This approved SPEC defines Goals as an independent future feature. No backend module, API, persistence, Angular route, migration, Goal calculation, or UI is authorized until a separate technical proposal is explicitly approved.
+This SPEC is **Verified**. Goals persistence, lifecycle transitions, dynamic backend-resolved progress, global-currency enforcement, REST contracts, lazy Angular route, and presentation are implemented and covered by focused backend and Angular tests. Statistics consumes only closed Goal data through its own backend boundary.

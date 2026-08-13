@@ -1,6 +1,6 @@
 # SPEC 004: Reward Affordability
 
-**Status:** Draft
+**Status:** Verified
 **Owner:** WorkWorth
 **Related tasks:** [TASKS.md](../../TASKS.md)
 **Related documentation:** [SPEC process](README.md), [Project foundation](000-project-foundation.md), [Salary net estimation](001-salary-net-estimation.md), [Work schedule and workday](002-work-schedule-and-workday.md), [Earnings and earning periods](003-earnings-and-earning-periods.md), [Business rules](../business-rules.md), [Architecture decisions](../../DECISIONS.md)
@@ -50,25 +50,25 @@ This SPEC consumes those effective Earnings results. It does not calculate salar
 
 ## Functional requirements
 
-- [ ] A reward belongs to the user and is independent from all other rewards.
-- [ ] A reward has a name, a positive integer quantity, a strictly positive total price, and an ISO currency code.
-- [ ] A new reward defaults to quantity `1` and pending status.
-- [ ] The persisted price is the total price for the complete reward and is never multiplied by quantity.
-- [ ] The user can edit the name, quantity, and total price of a pending reward.
-- [ ] The user can delete a reward.
-- [ ] The user can manually mark a pending reward as acquired.
-- [ ] An acquired reward appears in the acquired list, is absent from the pending list, and never participates in later reward evaluations or combinations.
-- [ ] The MVP does not support undoing acquisition or recording a reward-change history.
-- [ ] The backend can evaluate a pending reward against an explicitly requested Earnings context.
-- [ ] The backend can determine the first affordable context for a pending reward in the priority order `TODAY → WEEK → MONTH → ALL_TIME`.
-- [ ] The backend stores the last relevant affordable context only as the minimal marker needed to detect a newly reached or improved context; it does not persist an evaluation history.
-- [ ] A valid reward evaluation uses only the effective Earnings amount supplied for the selected context.
-- [ ] A reward evaluation uses the domain outcomes `AFFORDABLE` and `SHORTFALL` only when that Earnings context is economically evaluable.
-- [ ] A non-evaluable Earnings context produces an explicit evaluation failure/result and never invents an affordability state, surplus, shortfall, or monetary amount.
-- [ ] The backend can select a valid dynamic combination of distinct pending rewards whose total price does not exceed the effective available amount for a context.
-- [ ] A combination is dynamic evaluation output only and is never persisted as a new reward.
-- [ ] A reward can appear at most once in one combination.
-- [ ] The frontend does not calculate affordability, context priority, combinations, surplus, shortfall, exchange rates, or monetary rounding.
+- [x] A reward belongs to the user and is independent from all other rewards.
+- [x] A reward has a name, a positive integer quantity, a strictly positive total price, and an ISO currency code.
+- [x] A new reward defaults to quantity `1` and pending status.
+- [x] The persisted price is the total price for the complete reward and is never multiplied by quantity.
+- [x] The user can edit the name, quantity, and total price of a pending reward.
+- [x] The user can delete a reward.
+- [x] The user can manually mark a pending reward as acquired.
+- [x] An acquired reward appears in the acquired list, is absent from the pending list, and never participates in later reward evaluations or combinations.
+- [x] The MVP does not support undoing acquisition or recording a reward-change history.
+- [x] The backend can evaluate a pending reward against an explicitly requested Earnings context.
+- [x] The backend can determine the first affordable context for a pending reward in the priority order `TODAY → WEEK → MONTH → ALL_TIME`.
+- [x] The backend stores the last relevant affordable context only as the minimal marker needed to detect a newly reached or improved context; it does not persist an evaluation history.
+- [x] A valid reward evaluation uses only the effective Earnings amount supplied for the selected context.
+- [x] A reward evaluation uses the domain outcomes `AFFORDABLE` and `SHORTFALL` only when that Earnings context is economically evaluable.
+- [x] A non-evaluable Earnings context produces an explicit evaluation failure/result and never invents an affordability state, surplus, shortfall, or monetary amount.
+- [x] The backend can select a valid dynamic combination of distinct pending rewards whose total price does not exceed the effective available amount for a context.
+- [x] A combination is dynamic evaluation output only and is never persisted as a new reward.
+- [x] A reward can appear at most once in one combination.
+- [x] The frontend does not calculate affordability, context priority, combinations, surplus, shortfall, exchange rates, or monetary rounding.
 
 ## Business rules
 
@@ -235,21 +235,21 @@ An evaluation must consume the current effective Earnings result. Therefore, an 
 
 ## Acceptance criteria
 
-- [ ] A pending reward persists a name, positive integer quantity, positive total price, supported currency, and `PENDING` status.
-- [ ] New rewards default quantity to `1`; their stored price is never multiplied by quantity.
-- [ ] Pending rewards can be edited and deleted.
-- [ ] Marking a pending reward as acquired makes it `ACQUIRED`, excludes it from pending lists/evaluations/combinations, and retains it in acquired results.
-- [ ] There is no MVP operation to restore an acquired reward or retrieve a reward-change history.
-- [ ] Explicit evaluation of each Earnings context consumes only the effective Earnings amount for that context.
-- [ ] Automatic relevance selects the first affordable context in `TODAY → WEEK → MONTH → ALL_TIME` order.
-- [ ] An equal available amount and price is `AFFORDABLE` with surplus zero.
-- [ ] A lower available amount is `SHORTFALL` with the exact public shortfall; a higher amount is `AFFORDABLE` with the exact public surplus.
-- [ ] An unavailable Earnings amount or mismatched currency cannot create an affordability outcome or substitute monetary value.
-- [ ] A valid combination contains at least two distinct pending rewards, never exceeds the available amount, and is not persisted.
-- [ ] Another-combination requests return a valid alternative when one exists, without locally calculating a combination in Angular.
-- [ ] A current evaluation reflects the latest effective Earnings values after eligible historical corrections.
-- [ ] API contracts use DTOs and `ProblemDetail`; Angular contains no reward business logic or monetary calculations.
-- [ ] No Dashboard motivational composition, goals, statistics, AI, external integrations, currency conversion, advanced catalog behavior, or additional currencies is implemented by this SPEC.
+- [x] A pending reward persists a name, positive integer quantity, positive total price, supported currency, and `PENDING` status.
+- [x] New rewards default quantity to `1`; their stored price is never multiplied by quantity.
+- [x] Pending rewards can be edited and deleted.
+- [x] Marking a pending reward as acquired makes it `ACQUIRED`, excludes it from pending lists/evaluations/combinations, and retains it in acquired results.
+- [x] There is no MVP operation to restore an acquired reward or retrieve a reward-change history.
+- [x] Explicit evaluation of each Earnings context consumes only the effective Earnings amount for that context.
+- [x] Automatic relevance selects the first affordable context in `TODAY → WEEK → MONTH → ALL_TIME` order.
+- [x] An equal available amount and price is `AFFORDABLE` with surplus zero.
+- [x] A lower available amount is `SHORTFALL` with the exact public shortfall; a higher amount is `AFFORDABLE` with the exact public surplus.
+- [x] An unavailable Earnings amount or mismatched currency cannot create an affordability outcome or substitute monetary value.
+- [x] A valid combination contains at least two distinct pending rewards, never exceeds the available amount, and is not persisted.
+- [x] Another-combination requests return a valid alternative when one exists, without locally calculating a combination in Angular.
+- [x] A current evaluation reflects the latest effective Earnings values after eligible historical corrections.
+- [x] API contracts use DTOs and `ProblemDetail`; Angular contains no reward business logic or monetary calculations.
+- [x] No Dashboard motivational composition, goals, statistics, AI, external integrations, currency conversion, advanced catalog behavior, or additional currencies is implemented by this SPEC.
 
 ## Technical considerations
 
@@ -303,7 +303,7 @@ An evaluation must consume the current effective Earnings result. Therefore, an 
 
 ## Dependencies and technical choices for the implementation proposal
 
-No functional ambiguity remains in this Draft. The implementation proposal must still define, without changing these business rules:
+No functional ambiguity remained before implementation. The implementation preserved these business rules and the following technical choices:
 
 1. The request shape used to exclude a temporarily shown combination when the user asks for another one. It must not persist a combination or evaluation history.
 2. The separate global-currency configuration flow that supplies the shared `EUR`/`USD` application currency. Rewards must depend on it rather than create a parallel setting.
@@ -311,4 +311,4 @@ No functional ambiguity remains in this Draft. The implementation proposal must 
 
 ## Traceability and verification
 
-This SPEC is Draft. No Rewards backend, migration, API, Angular UI, or evaluation behavior is authorized until this specification and its technical proposal receive explicit approval.
+This SPEC is **Verified**. Reward persistence, CRUD, acquisition, relevance, combinations, backend currency enforcement, and the Angular presentation are implemented and covered by focused backend and Angular tests. The later Dashboard integration consumes the public read contracts without duplicating Reward rules.
