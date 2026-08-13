@@ -55,8 +55,8 @@
                 <dl>
                   <div><dt>Tiempo anterior</dt><dd>{{ correction.previousEconomicSeconds }} segundos</dd></div>
                   <div><dt>Tiempo nuevo</dt><dd>{{ correction.newEconomicSeconds }} segundos</dd></div>
-                  <div><dt>Importe anterior</dt><dd>{{ correction.previousAmount === null ? 'No disponible' : (correction.previousAmount | currency:(currentEarning.currencyCode || 'EUR'):'symbol':'1.2-2') }}</dd></div>
-                  <div><dt>Importe nuevo</dt><dd>{{ correction.newAmount === null ? 'No disponible' : (correction.newAmount | currency:(currentEarning.currencyCode || 'EUR'):'symbol':'1.2-2') }}</dd></div>
+                  <div><dt>Importe anterior</dt><dd>@if (correction.previousAmount === null || currentEarning.currencyCode === null) { No disponible } @else { {{ correction.previousAmount | currency:currentEarning.currencyCode:'symbol':'1.2-2' }} {{ currentEarning.currencyCode }} }</dd></div>
+                  <div><dt>Importe nuevo</dt><dd>@if (correction.newAmount === null || currentEarning.currencyCode === null) { No disponible } @else { {{ correction.newAmount | currency:currentEarning.currencyCode:'symbol':'1.2-2' }} {{ currentEarning.currencyCode }} }</dd></div>
                   <div><dt>Corregida en</dt><dd>{{ correction.correctedAt }}</dd></div>
                 </dl>
               </mat-card-content>

@@ -39,6 +39,40 @@ describe('EarningDetailComponent', () => {
     expect(earnings.corrections).toHaveBeenCalledWith('2026-08-12');
   });
 
+  it('renders correction amounts with the EUR currency received for the earning', () => {
+    earnings.workday.mockReturnValue(of(available()));
+    earnings.corrections.mockReturnValue(of(corrections()));
+
+    const fixture = TestBed.createComponent(EarningDetailComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('EUR');
+  });
+
+  it('renders correction amounts with the USD currency received for the earning', () => {
+    earnings.workday.mockReturnValue(of({ ...available(), currencyCode: 'USD' }));
+    earnings.corrections.mockReturnValue(of(corrections()));
+
+    const fixture = TestBed.createComponent(EarningDetailComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('USD');
+    expect(content).not.toContain('EUR');
+  });
+
+  it('does not invent a currency for correction amounts when the earning currency is missing', () => {
+    earnings.workday.mockReturnValue(of({ ...available(), currencyCode: null }));
+    earnings.corrections.mockReturnValue(of(corrections()));
+
+    const fixture = TestBed.createComponent(EarningDetailComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No disponible');
+    expect(content).not.toContain('EUR');
+  });
+
   it('shows an unavailable earning without inventing an amount', () => {
     earnings.workday.mockReturnValue(of({ ...available(), status: 'UNAVAILABLE', amount: null, currencyCode: null, unavailableReason: 'SALARY_RATE_UNAVAILABLE' }));
     earnings.corrections.mockReturnValue(of([]));
