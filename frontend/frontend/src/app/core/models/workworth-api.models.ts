@@ -5,6 +5,8 @@ export type RewardStatus = 'PENDING' | 'ACQUIRED';
 export type GoalStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
 export type RewardOutcome = 'AFFORDABLE' | 'SHORTFALL';
 export type DashboardMotivationState = 'EMPTY' | 'AVAILABLE' | 'PROGRESS' | 'UNAVAILABLE';
+export type StatisticsGranularity = 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
+export type StatisticAvailability = 'AVAILABLE' | 'UNAVAILABLE';
 export type WorkdayStatus =
   | 'SCHEDULED'
   | 'ACTIVE'
@@ -24,6 +26,7 @@ export type ApiErrorCode =
   | 'GOAL_CONFLICT'
   | 'GOAL_PROGRESS_UNAVAILABLE'
   | 'GOAL_CURRENCY_MISMATCH'
+  | 'STATISTICS_CURRENCY_MISMATCH'
   | 'REWARD_CONFLICT'
   | 'REWARD_CURRENCY_MISMATCH'
   | 'WORKDAY_CONFLICT'
@@ -161,6 +164,38 @@ export interface DashboardMotivationResponse {
   state: DashboardMotivationState;
   primaryReward: DashboardPrimaryRewardResponse | null;
   combination: DashboardCombinationResponse | null;
+}
+
+export interface StatisticsValueResponse {
+  status: StatisticAvailability;
+  value: number | null;
+}
+
+export interface StatisticsMoneyResponse {
+  status: StatisticAvailability;
+  amount: number | null;
+  currencyCode: ApplicationCurrency | null;
+}
+
+export interface StatisticsCountResponse {
+  status: StatisticAvailability;
+  count: number | null;
+}
+
+export interface StatisticsPointResponse {
+  startDate: string;
+  endDate: string;
+  workedHours: StatisticsValueResponse;
+  averageHourlyEarnings: StatisticsMoneyResponse;
+  totalEarnings: StatisticsMoneyResponse;
+  completedGoals: StatisticsCountResponse;
+}
+
+export interface StatisticsResponse {
+  granularity: StatisticsGranularity;
+  from: string | null;
+  to: string | null;
+  points: StatisticsPointResponse[];
 }
 
 export interface CreateSalaryProfileRequest {
