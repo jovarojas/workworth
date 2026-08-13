@@ -6,7 +6,9 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize, Subscription, timer } from 'rxjs';
-import { EarningPeriodResponse, EarningProjectionResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
+import { problemDetailFrom } from '../../../../core/http/problem-detail';
+import { DashboardMotivationResponse, EarningPeriodResponse, EarningProjectionResponse, WorkdayResponse, WorkdayStatus } from '../../../../core/models/workworth-api.models';
+import { DashboardApiService } from '../../../../core/services/dashboard-api.service';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
 import { WorkdayApiService } from '../../../../core/services/workday-api.service';
 
@@ -19,6 +21,7 @@ import { WorkdayApiService } from '../../../../core/services/workday-api.service
 export class DashboardPageComponent implements OnInit {
   private readonly earnings = inject(EarningsApiService);
   private readonly workdays = inject(WorkdayApiService);
+  private readonly dashboard = inject(DashboardApiService);
   private readonly destroyRef = inject(DestroyRef);
   private pollingSubscription?: Subscription;
 
@@ -28,6 +31,7 @@ export class DashboardPageComponent implements OnInit {
   readonly month = signal<EarningPeriodResponse | null>(null);
   readonly allTime = signal<EarningPeriodResponse | null>(null);
   readonly workday = signal<WorkdayResponse | null>(null);
+  readonly motivation = signal<DashboardMotivationResponse | null>(null);
 
   readonly projectionLoading = signal(true);
   readonly todayLoading = signal(true);
@@ -35,6 +39,7 @@ export class DashboardPageComponent implements OnInit {
   readonly monthLoading = signal(true);
   readonly allTimeLoading = signal(true);
   readonly workdayLoading = signal(true);
+  readonly motivationLoading = signal(true);
 
   readonly projectionError = signal<string | null>(null);
   readonly todayError = signal<string | null>(null);
@@ -42,6 +47,7 @@ export class DashboardPageComponent implements OnInit {
   readonly monthError = signal<string | null>(null);
   readonly allTimeError = signal<string | null>(null);
   readonly workdayError = signal<string | null>(null);
+  readonly motivationError = signal<string | null>(null);
   readonly workdayMissing = signal(false);
 
   readonly isUnavailable = computed(() => this.projection()?.status === 'UNAVAILABLE');
@@ -57,6 +63,7 @@ export class DashboardPageComponent implements OnInit {
     this.loadPeriod('MONTH', showLoading);
     this.loadPeriod('ALL_TIME', showLoading);
     this.loadWorkday(showLoading);
+    this.loadMotivation(showLoading);
   }
 
   workdayStatusLabel(status: WorkdayStatus): string {
@@ -143,6 +150,23 @@ export class DashboardPageComponent implements OnInit {
       });
   }
 
+  private loadMotivation(showLoading: boolean): void {
+    if (showLoading) {
+      this.motivationLoading.set(true);
+    }
+    this.motivationError.set(null);
+
+    this.dashboard.motivation()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => this.motivationLoading.set(false))
+      )
+      .subscribe({
+        next: (motivation) => this.motivation.set(motivation),
+        error: (error: unknown) => this.motivationError.set(this.motivationErrorMessage(error))
+      });
+  }
+
   private configurePolling(status: WorkdayStatus): void {
     if (status !== 'ACTIVE') {
       this.stopPolling();
@@ -168,5 +192,16 @@ export class DashboardPageComponent implements OnInit {
       return `No se puede conectar con WorkWorth para cargar ${resource}.`;
     }
     return `No se ha podido cargar ${resource}. Inténtalo de nuevo más tarde.`;
+  }
+
+  private motivationErrorMessage(error: unknown): string {
+    const detail = problemDetailFrom(error)?.detail;
+    if (detail) {
+      return detail;
+    }
+    if (error instanceof HttpErrorResponse && error.status === 0) {
+      return 'No se puede conectar con WorkWorth para cargar la motivación.';
+    }
+    return 'No se ha podido cargar la motivación. Inténtalo de nuevo más tarde.';
   }
 }

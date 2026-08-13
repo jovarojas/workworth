@@ -32,6 +32,46 @@
     }
   </section>
 
+  <section class="motivation-section" aria-labelledby="motivation-heading">
+    <mat-card class="motivation-card">
+      <mat-card-content>
+        <p class="eyebrow">MOTIVACIÓN ACTUAL</p>
+        @if (motivationLoading()) {
+          <p id="motivation-heading" class="motivation-card__loading" aria-live="polite">Cargando motivación…</p>
+        } @else if (motivationError(); as errorMessage) {
+          <p id="motivation-heading" class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (motivation(); as currentMotivation) {
+          @switch (currentMotivation.state) {
+            @case ('EMPTY') {
+              <h2 id="motivation-heading">Añade una recompensa para darle valor a tu trabajo.</h2>
+            }
+            @case ('UNAVAILABLE') {
+              <h2 id="motivation-heading">Ahora mismo no podemos evaluar tus recompensas.</h2>
+            }
+            @case ('AVAILABLE') {
+              @if (currentMotivation.primaryReward; as primaryReward) {
+                <h2 id="motivation-heading">Puedes conseguir {{ primaryReward.reward.name }}.</h2>
+                <p class="motivation-card__detail">
+                  {{ primaryReward.reward.price | currency:primaryReward.reward.currencyCode:'symbol':'1.2-2' }}
+                  · {{ primaryReward.relevantContext }}
+                </p>
+              }
+            }
+            @case ('PROGRESS') {
+              @if (currentMotivation.primaryReward; as primaryReward) {
+                <h2 id="motivation-heading">{{ primaryReward.reward.name }} está cada vez más cerca.</h2>
+                <p class="motivation-card__detail">
+                  Te faltan {{ primaryReward.shortfall | currency:primaryReward.reward.currencyCode:'symbol':'1.2-2' }}
+                  · {{ primaryReward.progressContext }}
+                </p>
+              }
+            }
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+
   <section class="workday-section" aria-labelledby="workday-heading">
     <mat-card class="workday-card">
       <mat-card-content>

@@ -74,6 +74,10 @@
   margin: 1rem 0;
 }
 
+.motivation-section {
+  margin: 1rem 0;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -81,10 +85,25 @@
 }
 
 .summary-card,
-.workday-card {
+.workday-card,
+.motivation-card {
   border: 1px solid #e1e5ee;
   border-radius: 1rem;
   box-shadow: none;
+}
+
+.motivation-card {
+  background: #f7f8ff;
+
+  h2 {
+    margin: .5rem 0;
+  }
+}
+
+.motivation-card__loading,
+.motivation-card__detail {
+  margin: .75rem 0 0;
+  color: #56627a;
 }
 
 .summary-card {

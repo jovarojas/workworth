@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { EarningsApiService } from '../../../../core/services/earnings-api.service';
+import { DashboardApiService } from '../../../../core/services/dashboard-api.service';
 import { WorkdayApiService } from '../../../../core/services/workday-api.service';
 import { DashboardPageComponent } from './dashboard-page.component';
 
@@ -11,16 +12,19 @@ describe('DashboardPageComponent', () => {
     period: vi.fn()
   };
   const workdays = { current: vi.fn() };
+  const dashboard = { motivation: vi.fn() };
 
   beforeEach(async () => {
     earnings.currentProjection.mockReset();
     earnings.period.mockReset();
     workdays.current.mockReset();
+    dashboard.motivation.mockReset();
 
     await TestBed.configureTestingModule({
       imports: [DashboardPageComponent],
       providers: [
         { provide: EarningsApiService, useValue: earnings },
+        { provide: DashboardApiService, useValue: dashboard },
         { provide: WorkdayApiService, useValue: workdays }
       ]
     }).compileComponents();
@@ -46,6 +50,75 @@ describe('DashboardPageComponent', () => {
     expect(earnings.period).toHaveBeenCalledWith('WEEK');
     expect(earnings.period).toHaveBeenCalledWith('MONTH');
     expect(earnings.period).toHaveBeenCalledWith('ALL_TIME');
+    expect(dashboard.motivation).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the EMPTY motivation state returned by the backend', () => {
+    mockAvailableDashboard();
+    dashboard.motivation.mockReturnValue(of({ state: 'EMPTY', primaryReward: null, combination: null }));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Añade una recompensa');
+  });
+
+  it('renders an AVAILABLE motivation without selecting reward contexts locally', () => {
+    mockAvailableDashboard();
+    dashboard.motivation.mockReturnValue(of(motivation('AVAILABLE', {
+      relevantContext: 'WEEK', outcome: 'AFFORDABLE', surplus: 0, shortfall: null
+    })));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Puedes conseguir Auriculares');
+    expect(content).toContain('WEEK');
+  });
+
+  it('renders the backend-provided PROGRESS shortfall without calculating it', () => {
+    mockAvailableDashboard();
+    dashboard.motivation.mockReturnValue(of(motivation('PROGRESS', {
+      relevantContext: null, progressContext: 'TODAY', outcome: 'SHORTFALL', surplus: null, shortfall: 35
+    })));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Auriculares está cada vez más cerca');
+    expect(content).toContain('35.00');
+    expect(content).toContain('TODAY');
+  });
+
+  it('renders the UNAVAILABLE motivation state without inventing an amount', () => {
+    mockAvailableDashboard();
+    dashboard.motivation.mockReturnValue(of({ state: 'UNAVAILABLE', primaryReward: null, combination: null }));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Ahora mismo no podemos evaluar tus recompensas');
+    expect(content).not.toContain('€0.00');
+  });
+
+  it('keeps earning and workday data visible when motivation fails', () => {
+    mockAvailableDashboard();
+    dashboard.motivation.mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 500,
+      error: { detail: 'No se pudo resolver la motivación.' }
+    })));
+
+    const fixture = TestBed.createComponent(DashboardPageComponent);
+    fixture.detectChanges();
+
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('No se pudo resolver la motivación.');
+    expect(content).toContain('12.50');
+    expect(content).toContain('En curso');
+    expect(content).toContain('50.00');
   });
 
   it('shows an explicit unavailable projection state without inventing an amount', () => {
@@ -161,6 +234,7 @@ describe('DashboardPageComponent', () => {
     earnings.currentProjection.mockImplementation(unavailable);
     earnings.period.mockImplementation(unavailable);
     workdays.current.mockImplementation(unavailable);
+    dashboard.motivation.mockImplementation(unavailable);
 
     const fixture = TestBed.createComponent(DashboardPageComponent);
     fixture.detectChanges();
@@ -205,6 +279,25 @@ describe('DashboardPageComponent', () => {
     }));
     earnings.period.mockImplementation((context: string) => of(period(context, periodAmount(context))));
     workdays.current.mockReturnValue(of(workday('ACTIVE')));
+    dashboard.motivation.mockReturnValue(of({ state: 'EMPTY', primaryReward: null, combination: null }));
+  }
+
+  function motivation(state: 'AVAILABLE' | 'PROGRESS', overrides: object) {
+    return {
+      state,
+      primaryReward: {
+        reward: { id: 4, name: 'Auriculares', quantity: 1, price: 120, currencyCode: 'EUR', status: 'PENDING' },
+        evaluable: true,
+        relevantContext: 'WEEK',
+        progressContext: null,
+        outcome: 'AFFORDABLE',
+        availableAmount: 120,
+        surplus: 0,
+        shortfall: null,
+        ...overrides
+      },
+      combination: null
+    };
   }
 
   function period(context: string, amount: number) {

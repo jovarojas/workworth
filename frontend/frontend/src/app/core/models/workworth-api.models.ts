@@ -3,6 +3,7 @@ export type EarningPeriod = 'TODAY' | 'WEEK' | 'MONTH' | 'ALL_TIME';
 export type ApplicationCurrency = 'EUR' | 'USD';
 export type RewardStatus = 'PENDING' | 'ACQUIRED';
 export type RewardOutcome = 'AFFORDABLE' | 'SHORTFALL';
+export type DashboardMotivationState = 'EMPTY' | 'AVAILABLE' | 'PROGRESS' | 'UNAVAILABLE';
 export type WorkdayStatus =
   | 'SCHEDULED'
   | 'ACTIVE'
@@ -92,6 +93,40 @@ export interface RewardCombinationResponse {
 export interface RewardCombinationRelevanceResponse {
   evaluable: boolean;
   combination: RewardCombinationResponse | null;
+}
+
+export interface DashboardRewardResponse {
+  id: number;
+  name: string;
+  quantity: number;
+  price: number;
+  currencyCode: ApplicationCurrency;
+  status: RewardStatus;
+}
+
+export interface DashboardPrimaryRewardResponse {
+  reward: DashboardRewardResponse;
+  evaluable: boolean;
+  relevantContext: EarningPeriod | null;
+  progressContext: EarningPeriod | null;
+  outcome: RewardOutcome;
+  availableAmount: number;
+  surplus: number | null;
+  shortfall: number | null;
+}
+
+export interface DashboardCombinationResponse {
+  context: EarningPeriod;
+  availableAmount: number;
+  totalPrice: number;
+  currencyCode: ApplicationCurrency;
+  rewards: DashboardRewardResponse[];
+}
+
+export interface DashboardMotivationResponse {
+  state: DashboardMotivationState;
+  primaryReward: DashboardPrimaryRewardResponse | null;
+  combination: DashboardCombinationResponse | null;
 }
 
 export interface CreateSalaryProfileRequest {
