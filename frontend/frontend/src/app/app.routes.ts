@@ -52,6 +52,13 @@ export const routes: Routes = [
     title: 'Objetivos | WorkWorth'
   },
   {
+    path: 'statistics',
+    loadComponent: () =>
+      import('./features/statistics/pages/statistics-page/statistics-page.component')
+        .then((module) => module.StatisticsPageComponent),
+    title: 'Estadísticas | WorkWorth'
+  },
+  {
     path: 'preferences/currency',
     loadComponent: () =>
       import('./features/preferences/pages/currency-settings/currency-settings.component')
