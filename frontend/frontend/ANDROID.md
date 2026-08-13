@@ -4,10 +4,10 @@ WorkWorth empaqueta el frontend Angular como una aplicación Android mediante Ca
 
 ## Flujo de compilación
 
-Usa Node `22.14.0` y ejecuta:
+Usa Node `22.14.0`, define la URL de la API del entorno y ejecuta:
 
 ```bash
-npm run build:android
+WORKWORTH_API_BASE_URL=http://10.0.2.2:8081/api/v1 npm run build:android:development
 cd android
 ./gradlew assembleDebug
 ```
@@ -18,11 +18,11 @@ El proyecto Android usa el resultado Angular de `dist/frontend/browser`. Capacit
 
 ## URL de la API
 
-La URL de la API sigue siendo una configuración de Angular. No se incluye ningún backend ni URL pública en la APK.
+La URL de la API se incorpora en la compilación de Angular a partir de `WORKWORTH_API_BASE_URL`. No se incluye ningún backend ni URL pública en la APK.
 
 - Desarrollo en navegador: `src/environments/environment.ts` usa `http://localhost:8081/api/v1`.
 - Desarrollo en emulador Android: antes de una prueba local, configura temporalmente la URL del entorno de compilación a `http://10.0.2.2:8081/api/v1`. `10.0.2.2` apunta al ordenador anfitrión desde el emulador. Esta variante es solo para desarrollo local.
-- Producción: crea una configuración de entorno de producción con la URL HTTPS real del backend, por ejemplo `https://<host-de-la-api>/api/v1`, cuando dicho despliegue exista. No publiques una APK de producción con una URL HTTP local.
+- Producción: cuando exista la API, genera la APK con `WORKWORTH_API_BASE_URL=https://<host-de-la-api>/api/v1 npm run build:android:production`. El comando rechaza URLs que no usen HTTPS.
 
 El backend de producción deberá permitir el origen de Capacitor y servir la API mediante HTTPS. No se habilita tráfico HTTP de producción desde la aplicación Android.
 

@@ -14,6 +14,9 @@ spring:
   flyway:
     enabled: true
 
+server:
+  port: ${PORT:8080}
+
 workworth:
   time-zone: ${APP_TIME_ZONE:Europe/Madrid}
   cors:
