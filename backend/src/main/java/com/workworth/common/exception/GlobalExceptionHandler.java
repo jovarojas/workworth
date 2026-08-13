@@ -16,6 +16,7 @@ import com.workworth.goals.exception.GoalConflictException;
 import com.workworth.goals.exception.GoalCurrencyMismatchException;
 import com.workworth.goals.exception.GoalNotFoundException;
 import com.workworth.goals.exception.GoalProgressUnavailableException;
+import com.workworth.statistics.exception.StatisticsCurrencyMismatchException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -108,6 +109,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GoalCurrencyMismatchException.class)
     ProblemDetail handleGoalCurrencyMismatch(GoalCurrencyMismatchException exception) {
         return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_CURRENCY_MISMATCH, exception.getMessage());
+    }
+
+    @ExceptionHandler(StatisticsCurrencyMismatchException.class)
+    ProblemDetail handleStatisticsCurrencyMismatch(StatisticsCurrencyMismatchException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.STATISTICS_CURRENCY_MISMATCH, exception.getMessage());
     }
 
     @ExceptionHandler(WorkdayNotFoundException.class)
