@@ -37,4 +37,4 @@ Every SPEC must use [TEMPLATE.md](TEMPLATE.md) and contain the sections defined 
 | 004-reward-affordability.md | Planned | Reward evaluation by earnings context. |
 | 005-dashboard.md | Planned | Motivational dashboard hierarchy. |
 | [006-goals.md](006-goals.md) | Approved | Personal goals and progress. |
-| 007-statistics.md | Planned | Statistics and charts. |
+| [007-statistics.md](007-statistics.md) | Verified | Historical statistics and aggregated charts. |
