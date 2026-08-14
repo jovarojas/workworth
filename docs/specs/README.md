@@ -38,3 +38,4 @@ Every SPEC must use [TEMPLATE.md](TEMPLATE.md) and contain the sections defined 
 | [005-dashboard.md](005-dashboard.md) | Verified | Motivational dashboard hierarchy. |
 | [006-goals.md](006-goals.md) | Verified | Personal goals and progress. |
 | [007-statistics.md](007-statistics.md) | Verified | Historical statistics and aggregated charts. |
+| [008-authentication-and-data-ownership.md](008-authentication-and-data-ownership.md) | Approved | Auth0 identity, authorization, and per-user data ownership. |
