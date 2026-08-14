@@ -1,6 +1,7 @@
 package com.workworth.goals.persistence;
 
 import com.workworth.goals.domain.GoalStatus;
+import com.workworth.identity.persistence.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,6 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -23,6 +26,10 @@ public class Goal {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
     @Column(nullable = false)
     private String title;
@@ -49,7 +56,8 @@ public class Goal {
     protected Goal() {
     }
 
-    public Goal(String title, BigDecimal targetAmount, String currencyCode, Instant createdAt) {
+    public Goal(AppUser user, String title, BigDecimal targetAmount, String currencyCode, Instant createdAt) {
+        this.user = user;
         this.title = title;
         this.targetAmount = targetAmount;
         this.currencyCode = currencyCode;

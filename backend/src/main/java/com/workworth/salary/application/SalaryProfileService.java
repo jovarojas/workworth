@@ -1,6 +1,8 @@
 package com.workworth.salary.application;
 
 import com.workworth.common.money.MoneyRounding;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.application.ApplicationCurrencyService;
 import com.workworth.salary.api.dto.CreateSalaryProfileRequest;
@@ -32,24 +34,29 @@ public class SalaryProfileService {
     private final Clock clock;
     private final ApplicationCurrencyProvider applicationCurrency;
     private final ApplicationCurrencyService applicationCurrencyService;
+    private final CurrentUserProvider currentUser;
 
     public SalaryProfileService(SalaryProfileRepository salaryProfileRepository,
                                 SalaryProfileMapper salaryProfileMapper,
                                 Clock clock,
                                 ApplicationCurrencyProvider applicationCurrency,
-                                ApplicationCurrencyService applicationCurrencyService) {
+                                ApplicationCurrencyService applicationCurrencyService,
+                                CurrentUserProvider currentUser) {
         this.salaryProfileRepository = salaryProfileRepository;
         this.salaryProfileMapper = salaryProfileMapper;
         this.clock = clock;
         this.applicationCurrency = applicationCurrency;
         this.applicationCurrencyService = applicationCurrencyService;
+        this.currentUser = currentUser;
     }
 
     @Transactional
     public SalaryProfileResponse create(CreateSalaryProfileRequest request) {
         validateRequest(request);
 
+        AppUser user = currentUser.currentUser();
         SalaryProfile profile = new SalaryProfile(
+            user,
             request.effectiveFrom(),
             moneyOrNull(request.grossAnnual()),
             moneyOrNull(request.netMonthlyReal()),
@@ -67,13 +74,17 @@ public class SalaryProfileService {
     }
 
     public SalaryProfile findEffectiveProfile(YearMonth month) {
-        return salaryProfileRepository.findTopByEffectiveFromLessThanEqualOrderByEffectiveFromDesc(month.atDay(1))
+        return findEffectiveProfile(currentUser.currentUser(), month);
+    }
+
+    public SalaryProfile findEffectiveProfile(AppUser user, YearMonth month) {
+        return salaryProfileRepository.findTopByUserIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(user.getId(), month.atDay(1))
             .orElseThrow(() -> new SalaryProfileNotFoundException(
                 "No salary profile is effective for " + month + "."));
     }
 
     public SalaryProfileHistoryResponse getHistory(int page, int size) {
-        Page<SalaryProfile> profiles = salaryProfileRepository.findAllByOrderByEffectiveFromDesc(PageRequest.of(page, size));
+        Page<SalaryProfile> profiles = salaryProfileRepository.findAllByUserIdOrderByEffectiveFromDesc(currentUser.currentUser().getId(), PageRequest.of(page, size));
         return new SalaryProfileHistoryResponse(
             profiles.map(salaryProfileMapper::toResponse).getContent(),
             profiles.getNumber(),
@@ -93,11 +104,11 @@ public class SalaryProfileService {
             throw new SalaryProfileConflictException("effectiveFrom must be the first day of a month.");
         }
 
-        YearMonth currentMonth = YearMonth.now(clock);
+        YearMonth currentMonth = YearMonth.now(clock.withZone(java.time.ZoneId.of(currentUser.currentUser().getTimeZone())));
         if (request.effectiveFrom().isBefore(currentMonth.atDay(1))) {
             throw new SalaryProfileConflictException("effectiveFrom cannot be before the current month in the MVP.");
         }
-        if (salaryProfileRepository.existsByEffectiveFrom(request.effectiveFrom())) {
+        if (salaryProfileRepository.existsByUserIdAndEffectiveFrom(currentUser.currentUser().getId(), request.effectiveFrom())) {
             throw new SalaryProfileConflictException("A salary profile already exists for this effective month.");
         }
     }

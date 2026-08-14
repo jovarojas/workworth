@@ -14,11 +14,14 @@ import com.workworth.salary.api.dto.SalaryProfileResponse;
 import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -39,20 +42,25 @@ class SalaryProfileServiceTest {
     @Mock
     private ApplicationCurrencyService applicationCurrencyService;
 
+    @Mock
+    private CurrentUserProvider currentUser;
+
     private SalaryProfileService salaryProfileService;
 
     @BeforeEach
     void setUp() {
         salaryProfileService = new SalaryProfileService(
                 salaryProfileRepository, new SalaryProfileMapper(), clock,
-                applicationCurrency, applicationCurrencyService);
+                applicationCurrency, applicationCurrencyService, currentUser);
         when(applicationCurrency.currentCurrency()).thenReturn(ApplicationCurrency.EUR);
+        org.mockito.Mockito.lenient().when(currentUser.currentUser()).thenReturn(new AppUser(UUID.randomUUID(), "test|salary",
+            "salary@test.invalid", "Europe/Madrid", Instant.EPOCH));
     }
 
     @Test
     void createsRealNetProfileAndDerivesAnnualNet() {
         CreateSalaryProfileRequest request = request(LocalDate.of(2026, 8, 1), new BigDecimal("1250.00"));
-        when(salaryProfileRepository.existsByEffectiveFrom(request.effectiveFrom())).thenReturn(false);
+        when(salaryProfileRepository.existsByUserIdAndEffectiveFrom(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(request.effectiveFrom()))).thenReturn(false);
         when(salaryProfileRepository.save(any(SalaryProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         SalaryProfileResponse response = salaryProfileService.create(request);

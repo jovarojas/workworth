@@ -12,6 +12,9 @@ import com.workworth.earnings.domain.EarningPeriodSummary;
 import com.workworth.earnings.domain.EarningStatus;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.domain.ApplicationCurrency;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
+import com.workworth.identity.application.TestUsers;
 import com.workworth.rewards.domain.RewardStatus;
 import com.workworth.rewards.persistence.Reward;
 import com.workworth.rewards.persistence.RewardRepository;
@@ -21,6 +24,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -37,8 +41,8 @@ class RewardCombinationServiceTest {
         Reward hamburgers = reward(1L, "Hamburguesas", 2, "30.00");
         Reward funkos = reward(2L, "Funkos", 2, "60.00");
         Reward book = reward(3L, "Libro", 1, "80.00");
-        when(rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING)).thenReturn(List.of(hamburgers, funkos, book));
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(List.of(hamburgers, funkos, book));
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var combination = service.combination(EarningPeriod.TODAY, Set.of());
         var alternative = service.combination(EarningPeriod.TODAY, Set.of(2L));
@@ -57,7 +61,7 @@ class RewardCombinationServiceTest {
         when(currency.currentCurrency()).thenReturn(ApplicationCurrency.EUR);
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(new EarningPeriodSummary(EarningPeriod.TODAY,
             EarningStatus.UNAVAILABLE, LocalDate.now(), LocalDate.now().plusDays(1), null, null, null));
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var unavailable = service.combination(EarningPeriod.TODAY, Set.of());
 
@@ -71,8 +75,8 @@ class RewardCombinationServiceTest {
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(available(EarningPeriod.TODAY, "90.00"));
-        when(rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING)).thenReturn(pendingRewards());
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var relevance = service.relevantCombination();
 
@@ -88,10 +92,10 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING)).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(available(EarningPeriod.TODAY, "50.00"));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "90.00"));
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var relevance = service.relevantCombination();
 
@@ -104,11 +108,11 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING)).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(available(EarningPeriod.TODAY, "20.00"));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "50.00"));
         when(periods.summarize(EarningPeriod.MONTH)).thenReturn(available(EarningPeriod.MONTH, "90.00"));
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var month = service.relevantCombination();
 
@@ -128,10 +132,10 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING)).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(unavailable(EarningPeriod.TODAY));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "90.00"));
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var afterUnavailableToday = service.relevantCombination();
 
@@ -153,11 +157,11 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING)).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         for (EarningPeriod context : EarningPeriod.values()) {
             when(periods.summarize(context)).thenReturn(available(context, "20.00"));
         }
-        RewardCombinationService service = new RewardCombinationService(rewards, periods, currency);
+        RewardCombinationService service = service(rewards, periods, currency);
 
         var relevance = service.relevantCombination();
 
@@ -188,8 +192,17 @@ class RewardCombinationServiceTest {
     }
 
     private Reward reward(Long id, String name, int quantity, String price) {
-        Reward reward = new Reward(name, quantity, new BigDecimal(price), "EUR", Instant.EPOCH);
+        Reward reward = new Reward(TestUsers.user("test|combinations"), name, quantity, new BigDecimal(price), "EUR", Instant.EPOCH);
         ReflectionTestUtils.setField(reward, "id", id);
         return reward;
+    }
+
+    private RewardCombinationService service(RewardRepository rewards, EarningPeriodService periods,
+                                             ApplicationCurrencyProvider currency) {
+        AppUser user = new AppUser(UUID.randomUUID(), "test|combinations", "combinations@test.invalid",
+            "Europe/Madrid", Instant.EPOCH);
+        CurrentUserProvider currentUser = mock(CurrentUserProvider.class);
+        when(currentUser.currentUser()).thenReturn(user);
+        return new RewardCombinationService(rewards, periods, currency, currentUser);
     }
 }

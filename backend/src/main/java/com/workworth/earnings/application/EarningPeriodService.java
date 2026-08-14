@@ -4,13 +4,13 @@ import com.workworth.common.money.MoneyRounding;
 import com.workworth.earnings.domain.*;
 import com.workworth.earnings.persistence.*;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
+import com.workworth.identity.application.CurrentUserProvider;
 
 import java.math.*;
 import java.time.*;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,20 +18,21 @@ public class EarningPeriodService {
     private final WorkdayEarningRepository earnings;
     private final EarningCorrectionRepository corrections;
     private final Clock clock;
-    private final ZoneId zone;
     private final ApplicationCurrencyProvider applicationCurrency;
+    private final CurrentUserProvider currentUser;
 
     public EarningPeriodService(WorkdayEarningRepository e, EarningCorrectionRepository c, Clock clock,
-                                @Value("${workworth.time-zone:Europe/Madrid}") String zone,
-                                ApplicationCurrencyProvider applicationCurrency) {
+                                ApplicationCurrencyProvider applicationCurrency,
+                                CurrentUserProvider currentUser) {
         earnings = e;
         corrections = c;
         this.clock = clock;
-        this.zone = ZoneId.of(zone);
         this.applicationCurrency = applicationCurrency;
+        this.currentUser = currentUser;
     }
 
     public EarningPeriodSummary summarize(EarningPeriod period) {
+        ZoneId zone = ZoneId.of(currentUser.currentUser().getTimeZone());
         LocalDate today = LocalDate.now(clock.withZone(zone));
         LocalDate start = switch (period) {
             case TODAY -> today;
@@ -45,7 +46,7 @@ public class EarningPeriodService {
             case MONTH -> start.plusMonths(1);
             case ALL_TIME -> null;
         };
-        List<WorkdayEarning> periodEarnings = earnings.findAll().stream()
+        List<WorkdayEarning> periodEarnings = earnings.findAllByWorkdayOwnerId(currentUser.currentUser().getId()).stream()
             .filter(e -> start == null || (!e.getLocalDate().isBefore(start) && e.getLocalDate().isBefore(end)))
             .toList();
         List<WorkdayEarning> values = periodEarnings.stream()

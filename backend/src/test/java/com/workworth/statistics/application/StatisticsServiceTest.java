@@ -16,6 +16,9 @@ import com.workworth.goals.application.GoalService;
 import com.workworth.goals.persistence.Goal;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.domain.ApplicationCurrency;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
+import com.workworth.identity.application.TestUsers;
 import com.workworth.statistics.domain.StatisticAvailability;
 import com.workworth.statistics.domain.StatisticsGranularity;
 import com.workworth.statistics.exception.StatisticsCurrencyMismatchException;
@@ -26,6 +29,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,15 +39,18 @@ class StatisticsServiceTest {
     private final EarningQueryService earnings = mock(EarningQueryService.class);
     private final GoalService goals = mock(GoalService.class);
     private final ApplicationCurrencyProvider currency = mock(ApplicationCurrencyProvider.class);
+    private final CurrentUserProvider currentUser = mock(CurrentUserProvider.class);
     private StatisticsService service;
 
     @BeforeEach
     void setUp() {
         when(currency.currentCurrency()).thenReturn(ApplicationCurrency.EUR);
+        when(currentUser.currentUser()).thenReturn(new AppUser(UUID.randomUUID(), "test|statistics",
+            "statistics@test.invalid", "Europe/Madrid", Instant.EPOCH));
         history(List.of());
         when(goals.history()).thenReturn(List.of());
         service = new StatisticsService(earnings, goals, currency,
-            Clock.fixed(Instant.parse("2026-08-13T10:00:00Z"), ZoneOffset.UTC), "Europe/Madrid");
+            Clock.fixed(Instant.parse("2026-08-13T10:00:00Z"), ZoneOffset.UTC), currentUser);
     }
 
     @Test
@@ -92,7 +99,7 @@ class StatisticsServiceTest {
     @Test
     void keepsHoursAndGoalCompletionAvailableWhenEarningsAreUnavailable() {
         history(List.of(effective(LocalDate.of(2026, 8, 10), EarningStatus.UNAVAILABLE, 3_600, null, null)));
-        Goal completed = new Goal("Viaje", new BigDecimal("100.00"), "EUR", Instant.EPOCH);
+        Goal completed = new Goal(TestUsers.user("test|statistics-goals"), "Viaje", new BigDecimal("100.00"), "EUR", Instant.EPOCH);
         completed.complete(Instant.parse("2026-08-10T10:00:00Z"));
         when(goals.history()).thenReturn(List.of(completed));
 
@@ -108,9 +115,9 @@ class StatisticsServiceTest {
 
     @Test
     void countsOnlyCompletedGoalsByClosedAt() {
-        Goal completed = new Goal("Viaje", new BigDecimal("100.00"), "EUR", Instant.EPOCH);
+        Goal completed = new Goal(TestUsers.user("test|statistics-goals"), "Viaje", new BigDecimal("100.00"), "EUR", Instant.EPOCH);
         completed.complete(Instant.parse("2026-08-10T10:00:00Z"));
-        Goal cancelled = new Goal("Curso", new BigDecimal("100.00"), "EUR", Instant.EPOCH);
+        Goal cancelled = new Goal(TestUsers.user("test|statistics-goals"), "Curso", new BigDecimal("100.00"), "EUR", Instant.EPOCH);
         cancelled.cancel(Instant.parse("2026-08-10T10:00:00Z"));
         when(goals.history()).thenReturn(List.of(completed, cancelled));
 

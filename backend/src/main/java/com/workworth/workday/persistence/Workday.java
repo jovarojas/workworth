@@ -1,5 +1,6 @@
 package com.workworth.workday.persistence;
 
+import com.workworth.identity.persistence.AppUser;
 import com.workworth.workday.domain.ScheduleVariant;
 import com.workworth.workday.domain.WorkdayStatus;
 import jakarta.persistence.*;
@@ -17,7 +18,10 @@ public class Workday {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "local_date", nullable = false, unique = true)
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
+    @Column(name = "local_date", nullable = false)
     private LocalDate localDate;
     @Column(name = "time_zone", nullable = false, length = 64)
     private String timeZone;
@@ -45,7 +49,8 @@ public class Workday {
     protected Workday() {
     }
 
-    public Workday(LocalDate date, String zone, ScheduleVariant variant, LocalTime start, LocalTime end, long maxSeconds, Instant now) {
+    public Workday(AppUser user, LocalDate date, String zone, ScheduleVariant variant, LocalTime start, LocalTime end, long maxSeconds, Instant now) {
+        this.user = user;
         localDate = date;
         timeZone = zone;
         scheduleVariant = variant;

@@ -10,6 +10,7 @@ import com.workworth.earnings.domain.EarningPeriod;
 import com.workworth.earnings.domain.EarningPeriodSummary;
 import com.workworth.earnings.domain.EarningStatus;
 import com.workworth.goals.exception.GoalCurrencyMismatchException;
+import com.workworth.identity.application.TestUsers;
 import com.workworth.goals.persistence.Goal;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.domain.ApplicationCurrency;
@@ -83,7 +84,8 @@ class GoalProgressServiceTest {
     }
 
     private Goal goal(String targetAmount, String currencyCode) {
-        return new Goal("Viaje", new BigDecimal(targetAmount), currencyCode, Instant.EPOCH);
+        return new Goal(TestUsers.user("test|goal-progress"), "Viaje", new BigDecimal(targetAmount),
+            currencyCode, Instant.EPOCH);
     }
 
     private EarningPeriodSummary available(String amount, String currencyCode) {

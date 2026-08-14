@@ -1,6 +1,8 @@
 package com.workworth.preferences.application;
 
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 import com.workworth.preferences.domain.ApplicationCurrency;
 import com.workworth.preferences.exception.ApplicationCurrencyLockedException;
 import com.workworth.preferences.persistence.ApplicationSettings;
@@ -16,21 +18,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ApplicationCurrencyService implements ApplicationCurrencyProvider {
 
-    private static final short SETTINGS_ID = 1;
-
     private final ApplicationSettingsRepository settingsRepository;
     private final SalaryProfileRepository salaryProfiles;
     private final WorkdayEarningRepository earnings;
     private final Clock clock;
+    private final CurrentUserProvider currentUser;
 
     public ApplicationCurrencyService(ApplicationSettingsRepository settingsRepository,
                                       SalaryProfileRepository salaryProfiles,
                                       WorkdayEarningRepository earnings,
-                                      Clock clock) {
+                                      Clock clock,
+                                      CurrentUserProvider currentUser) {
         this.settingsRepository = settingsRepository;
         this.salaryProfiles = salaryProfiles;
         this.earnings = earnings;
         this.clock = clock;
+        this.currentUser = currentUser;
     }
 
     @Override
@@ -61,7 +64,12 @@ public class ApplicationCurrencyService implements ApplicationCurrencyProvider {
 
     @Transactional
     public void lockCurrencyAfterEconomicData() {
-        settings().lockCurrency(clock.instant());
+        lockCurrencyAfterEconomicData(currentUser.currentUser());
+    }
+
+    @Transactional
+    public void lockCurrencyAfterEconomicData(AppUser user) {
+        settings(user).lockCurrency(clock.instant());
     }
 
     private boolean canChange(ApplicationSettings settings) {
@@ -69,11 +77,16 @@ public class ApplicationCurrencyService implements ApplicationCurrencyProvider {
     }
 
     private boolean hasPersistedEconomicData() {
-        return salaryProfiles.count() > 0 || earnings.count() > 0;
+        AppUser user = currentUser.currentUser();
+        return salaryProfiles.countByUserId(user.getId()) > 0 || earnings.existsByWorkdayOwnerId(user.getId());
     }
 
     private ApplicationSettings settings() {
-        return settingsRepository.findById(SETTINGS_ID)
-            .orElseThrow(() -> new IllegalStateException("Application currency settings are not configured."));
+        return settings(currentUser.currentUser());
+    }
+
+    private ApplicationSettings settings(AppUser user) {
+        return settingsRepository.findById(user.getId())
+            .orElseGet(() -> settingsRepository.save(new ApplicationSettings(user, ApplicationCurrency.EUR, clock.instant())));
     }
 }

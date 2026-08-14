@@ -25,7 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(classes = WorkWorthApplication.class)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @Testcontainers
 class StatisticsControllerIntegrationTest {
 
@@ -47,6 +47,7 @@ class StatisticsControllerIntegrationTest {
 
     @BeforeEach
     void resetState() {
+        ensureTestUser();
         jdbcTemplate.update("DELETE FROM goals");
         jdbcTemplate.update("DELETE FROM earning_corrections");
         jdbcTemplate.update("DELETE FROM workday_earnings");
@@ -57,7 +58,14 @@ class StatisticsControllerIntegrationTest {
         jdbcTemplate.update("DELETE FROM salary_profiles");
         jdbcTemplate.update("DELETE FROM rewards");
         jdbcTemplate.update("UPDATE application_settings "
-            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 1");
+            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE user_id = '00000000-0000-0000-0000-000000000001'");
+    }
+
+    private void ensureTestUser() {
+        jdbcTemplate.update("INSERT INTO app_users (id, identity_subject, email, status, time_zone, created_at) "
+            + "VALUES ('00000000-0000-0000-0000-000000000001', 'test|workworth', 'test@workworth.invalid', "
+            + "'ACTIVE', 'Europe/Madrid', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
     }
 
     @Test
@@ -119,17 +127,17 @@ class StatisticsControllerIntegrationTest {
     private void insertGoal(String title, String status, Instant closedAt) {
         Timestamp timestamp = Timestamp.from(closedAt);
         jdbcTemplate.update("""
-            INSERT INTO goals (title, target_amount, currency_code, status, created_at, updated_at, closed_at)
-            VALUES (?, 100.00, 'EUR', ?, ?, ?, ?)
+            INSERT INTO goals (user_id, title, target_amount, currency_code, status, created_at, updated_at, closed_at)
+            VALUES ('00000000-0000-0000-0000-000000000001', ?, 100.00, 'EUR', ?, ?, ?, ?)
             """, title, status, timestamp, timestamp, timestamp);
     }
 
     private void insertEarning(LocalDate date, String status, long economicSeconds, BigDecimal amount, String currencyCode) {
         Timestamp timestamp = Timestamp.from(Instant.parse("2026-08-13T10:00:00Z"));
         Long workdayId = jdbcTemplate.queryForObject("""
-            INSERT INTO workdays (local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
+            INSERT INTO workdays (user_id, local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
                 maximum_economic_seconds, status, created_at, updated_at)
-            VALUES (?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
+            VALUES ('00000000-0000-0000-0000-000000000001', ?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
             RETURNING id
             """, Long.class, date, timestamp, timestamp);
         jdbcTemplate.update("""

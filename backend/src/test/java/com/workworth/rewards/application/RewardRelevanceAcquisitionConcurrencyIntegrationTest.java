@@ -64,10 +64,18 @@ class RewardRelevanceAcquisitionConcurrencyIntegrationTest {
 
     @BeforeEach
     void resetState() {
+        ensureTestUser();
         jdbcTemplate.update("DELETE FROM rewards");
         jdbcTemplate.update("UPDATE application_settings "
-            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 1");
+            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE user_id = '00000000-0000-0000-0000-000000000001'");
         executor = Executors.newFixedThreadPool(2);
+    }
+
+    private void ensureTestUser() {
+        jdbcTemplate.update("INSERT INTO app_users (id, identity_subject, email, status, time_zone, created_at) "
+            + "VALUES ('00000000-0000-0000-0000-000000000001', 'test|workworth', 'test@workworth.invalid', "
+            + "'ACTIVE', 'Europe/Madrid', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
     }
 
     @AfterEach

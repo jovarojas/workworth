@@ -13,6 +13,7 @@ import com.workworth.salary.exception.SalaryRateUnavailableException;
 import com.workworth.workday.application.WorkdayService;
 import com.workworth.workday.domain.WorkdayStatus;
 import com.workworth.workday.persistence.Workday;
+import com.workworth.identity.application.TestUsers;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -41,11 +42,13 @@ class EarningMaterializationServiceTest {
         WorkdayService workdays = mock(WorkdayService.class);
         MonthlySalaryRateService rates = mock(MonthlySalaryRateService.class);
         Workday day = mock(Workday.class);
+        var user = TestUsers.user("test|earnings-materialization");
         when(day.getStatus()).thenReturn(WorkdayStatus.COMPLETED);
         when(day.getId()).thenReturn(4L);
         when(day.getLocalDate()).thenReturn(java.time.LocalDate.of(2026, 1, 2));
+        when(day.getUser()).thenReturn(user);
         when(workdays.time(day)).thenReturn(28_800L);
-        when(rates.getRate(java.time.YearMonth.of(2026, 1)))
+        when(rates.getRate(user, java.time.YearMonth.of(2026, 1)))
                 .thenThrow(new SalaryRateUnavailableException("No calendar."));
         when(earnings.findByWorkdayId(4L)).thenReturn(java.util.Optional.empty());
         when(earnings.save(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -61,6 +64,6 @@ class EarningMaterializationServiceTest {
         org.assertj.core.api.Assertions.assertThat(saved.getUnavailableReason())
                 .isEqualTo(com.workworth.earnings.domain.EarningUnavailableReason.SALARY_RATE_UNAVAILABLE);
         verify(earnings).save(saved);
-        verify(applicationCurrency).lockCurrencyAfterEconomicData();
+        verify(applicationCurrency).lockCurrencyAfterEconomicData(user);
     }
 }

@@ -2,12 +2,19 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { routes } from './app.routes';
+import { WorkWorthAuthService } from './core/auth/workworth-auth.service';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter(routes)]
+      providers: [
+        provideRouter(routes),
+        {
+          provide: WorkWorthAuthService,
+          useValue: { configured: false, isAuthenticated: () => false, logout: () => undefined }
+        }
+      ]
     }).compileComponents();
   });
 

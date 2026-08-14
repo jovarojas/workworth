@@ -10,6 +10,7 @@ import com.workworth.dashboard.application.DashboardMotivationService;
 import com.workworth.dashboard.application.DashboardMotivationState;
 import com.workworth.dashboard.application.DashboardPrimaryReward;
 import com.workworth.earnings.domain.EarningPeriod;
+import com.workworth.identity.application.TestUsers;
 import com.workworth.rewards.application.RewardEvaluation;
 import com.workworth.rewards.domain.RewardOutcome;
 import com.workworth.rewards.persistence.Reward;
@@ -20,11 +21,13 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(DashboardController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class DashboardControllerTest {
 
     @Autowired
@@ -35,7 +38,8 @@ class DashboardControllerTest {
 
     @Test
     void exposesTheDashboardMotivationContractOverHttp() throws Exception {
-        Reward reward = new Reward("Auriculares", 1, new BigDecimal("120.00"), "EUR", Instant.EPOCH);
+        Reward reward = new Reward(TestUsers.user("test|dashboard-controller"), "Auriculares", 1,
+            new BigDecimal("120.00"), "EUR", Instant.EPOCH);
         ReflectionTestUtils.setField(reward, "id", 12L);
         RewardEvaluation evaluation = new RewardEvaluation(12L, EarningPeriod.MONTH, true,
             RewardOutcome.AFFORDABLE, new BigDecimal("120.00"), new BigDecimal("120.00"), "EUR",

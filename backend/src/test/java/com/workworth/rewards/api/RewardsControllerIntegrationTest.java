@@ -33,7 +33,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(classes = WorkWorthApplication.class)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @Testcontainers
 class RewardsControllerIntegrationTest {
 
@@ -61,6 +61,7 @@ class RewardsControllerIntegrationTest {
 
     @BeforeEach
     void resetState() {
+        ensureTestUser();
         jdbcTemplate.update("DELETE FROM earning_corrections");
         jdbcTemplate.update("DELETE FROM workday_earnings");
         jdbcTemplate.update("DELETE FROM partial_absences");
@@ -70,7 +71,14 @@ class RewardsControllerIntegrationTest {
         jdbcTemplate.update("DELETE FROM salary_profiles");
         jdbcTemplate.update("DELETE FROM rewards");
         jdbcTemplate.update("UPDATE application_settings "
-            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 1");
+            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE user_id = '00000000-0000-0000-0000-000000000001'");
+    }
+
+    private void ensureTestUser() {
+        jdbcTemplate.update("INSERT INTO app_users (id, identity_subject, email, status, time_zone, created_at) "
+            + "VALUES ('00000000-0000-0000-0000-000000000001', 'test|workworth', 'test@workworth.invalid', "
+            + "'ACTIVE', 'Europe/Madrid', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
     }
 
     @Test
@@ -227,9 +235,9 @@ class RewardsControllerIntegrationTest {
         LocalDate date = LocalDate.now(ZoneId.of("Europe/Madrid"));
         Timestamp timestamp = Timestamp.from(Instant.now());
         Long workdayId = jdbcTemplate.queryForObject("""
-            INSERT INTO workdays (local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
+            INSERT INTO workdays (user_id, local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
                 maximum_economic_seconds, status, created_at, updated_at)
-            VALUES (?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
+            VALUES ('00000000-0000-0000-0000-000000000001', ?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
             RETURNING id
             """, Long.class, date, timestamp, timestamp);
         jdbcTemplate.update("""

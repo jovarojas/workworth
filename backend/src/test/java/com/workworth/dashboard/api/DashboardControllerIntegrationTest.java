@@ -27,7 +27,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(classes = WorkWorthApplication.class)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @Testcontainers
 class DashboardControllerIntegrationTest {
 
@@ -49,12 +49,20 @@ class DashboardControllerIntegrationTest {
 
     @BeforeEach
     void resetState() {
+        ensureTestUser();
         jdbcTemplate.update("DELETE FROM earning_corrections");
         jdbcTemplate.update("DELETE FROM workday_earnings");
         jdbcTemplate.update("DELETE FROM rewards");
         jdbcTemplate.update("DELETE FROM workdays");
         jdbcTemplate.update("UPDATE application_settings "
-            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = 1");
+            + "SET currency_code = 'EUR', currency_locked_at = NULL, updated_at = CURRENT_TIMESTAMP "
+            + "WHERE user_id = '00000000-0000-0000-0000-000000000001'");
+    }
+
+    private void ensureTestUser() {
+        jdbcTemplate.update("INSERT INTO app_users (id, identity_subject, email, status, time_zone, created_at) "
+            + "VALUES ('00000000-0000-0000-0000-000000000001', 'test|workworth', 'test@workworth.invalid', "
+            + "'ACTIVE', 'Europe/Madrid', CURRENT_TIMESTAMP) ON CONFLICT (id) DO NOTHING");
     }
 
     @Test
@@ -79,8 +87,8 @@ class DashboardControllerIntegrationTest {
     private long insertReward(String name, BigDecimal price, String lastReachedContext) {
         Timestamp timestamp = Timestamp.from(Instant.now());
         return jdbcTemplate.queryForObject("""
-            INSERT INTO rewards (name, quantity, price, currency_code, status, last_reached_context, created_at, updated_at)
-            VALUES (?, 1, ?, 'EUR', 'PENDING', ?, ?, ?)
+            INSERT INTO rewards (user_id, name, quantity, price, currency_code, status, last_reached_context, created_at, updated_at)
+            VALUES ('00000000-0000-0000-0000-000000000001', ?, 1, ?, 'EUR', 'PENDING', ?, ?, ?)
             RETURNING id
             """, Long.class, name, price, lastReachedContext, timestamp, timestamp);
     }
@@ -89,10 +97,10 @@ class DashboardControllerIntegrationTest {
         LocalDate date = LocalDate.now(ZoneId.of("Europe/Madrid"));
         Timestamp timestamp = Timestamp.from(Instant.now());
         Long workdayId = jdbcTemplate.queryForObject("""
-            INSERT INTO workdays (local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
+            INSERT INTO workdays (user_id, local_date, time_zone, schedule_variant, scheduled_start, scheduled_end,
                 maximum_economic_seconds, status, created_at, updated_at)
-            VALUES (?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
-            ON CONFLICT (local_date) DO UPDATE SET updated_at = EXCLUDED.updated_at
+            VALUES ('00000000-0000-0000-0000-000000000001', ?, 'Europe/Madrid', 'STANDARD', '09:00', '17:00', 28800, 'COMPLETED', ?, ?)
+            ON CONFLICT (user_id, local_date) DO UPDATE SET updated_at = EXCLUDED.updated_at
             RETURNING id
             """, Long.class, date, timestamp, timestamp);
         jdbcTemplate.update("""

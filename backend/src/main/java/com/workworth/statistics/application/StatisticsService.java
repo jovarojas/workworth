@@ -9,6 +9,7 @@ import com.workworth.goals.application.GoalService;
 import com.workworth.goals.domain.GoalStatus;
 import com.workworth.goals.persistence.Goal;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
+import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.statistics.domain.StatisticsGranularity;
 import com.workworth.statistics.exception.StatisticsCurrencyMismatchException;
 
@@ -23,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,21 +39,22 @@ public class StatisticsService {
     private final GoalService goals;
     private final ApplicationCurrencyProvider currency;
     private final Clock clock;
-    private final ZoneId zone;
+    private final CurrentUserProvider currentUser;
 
     public StatisticsService(EarningQueryService earnings, GoalService goals, ApplicationCurrencyProvider currency,
-                             Clock clock, @Value("${workworth.time-zone:Europe/Madrid}") String zone) {
+                             Clock clock, CurrentUserProvider currentUser) {
         this.earnings = earnings;
         this.goals = goals;
         this.currency = currency;
         this.clock = clock;
-        this.zone = ZoneId.of(zone);
+        this.currentUser = currentUser;
     }
 
     public StatisticsResult statistics(StatisticsGranularity granularity, LocalDate from, LocalDate to) {
         validateRange(from, to);
         List<EffectiveEarning> effectiveEarnings = allEffectiveEarnings();
         List<Goal> closedGoals = goals.history();
+        ZoneId zone = zone();
         LocalDate today = LocalDate.now(clock.withZone(zone));
         DateRange requestedRange = resolveRange(from, to, effectiveEarnings, closedGoals, today);
         if (requestedRange == null) {
@@ -79,7 +80,7 @@ public class StatisticsService {
         StatisticsMoney averageHourlyEarnings = averageHourlyEarnings(periodEarnings, totalEarnings, effectiveSeconds);
         int completedGoals = (int) closedGoals.stream()
             .filter(goal -> goal.getStatus() == GoalStatus.COMPLETED)
-            .filter(goal -> bucket.includes(LocalDate.ofInstant(goal.getClosedAt(), zone)))
+            .filter(goal -> bucket.includes(LocalDate.ofInstant(goal.getClosedAt(), zone())))
             .count();
         return new StatisticsPoint(bucket.startDate(), bucket.endDate(), workedHours, averageHourlyEarnings,
             totalEarnings, StatisticsCount.available(completedGoals));
@@ -138,7 +139,7 @@ public class StatisticsService {
             .min(Comparator.naturalOrder()).orElse(null);
         LocalDate firstCompletedGoal = closedGoals.stream()
             .filter(goal -> goal.getStatus() == GoalStatus.COMPLETED)
-            .map(goal -> LocalDate.ofInstant(goal.getClosedAt(), zone))
+            .map(goal -> LocalDate.ofInstant(goal.getClosedAt(), zone()))
             .min(Comparator.naturalOrder()).orElse(null);
         LocalDate earliest = java.util.stream.Stream.of(firstEarning, firstCompletedGoal)
             .filter(java.util.Objects::nonNull)
@@ -180,6 +181,10 @@ public class StatisticsService {
         if ((from == null) != (to == null) || (from != null && from.isAfter(to))) {
             throw new IllegalArgumentException("Statistics from and to dates must be supplied together in ascending order.");
         }
+    }
+
+    private ZoneId zone() {
+        return ZoneId.of(currentUser.currentUser().getTimeZone());
     }
 
     private record DateRange(LocalDate startDate, LocalDate endDate) {

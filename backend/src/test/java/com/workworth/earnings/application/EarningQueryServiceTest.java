@@ -13,11 +13,14 @@ import com.workworth.earnings.persistence.EarningCorrection;
 import com.workworth.earnings.persistence.EarningCorrectionRepository;
 import com.workworth.earnings.persistence.WorkdayEarning;
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,17 +34,20 @@ class EarningQueryServiceTest {
 
     @Mock private WorkdayEarningRepository earnings;
     @Mock private EarningCorrectionRepository corrections;
+    @Mock private CurrentUserProvider currentUser;
 
     private EarningQueryService service;
 
     @BeforeEach
     void setUp() {
-        service = new EarningQueryService(earnings, corrections);
+        AppUser user = new AppUser(UUID.randomUUID(), "test|earnings", "earnings@test.invalid", "Europe/Madrid", Instant.EPOCH);
+        when(currentUser.currentUser()).thenReturn(user);
+        service = new EarningQueryService(earnings, corrections, currentUser);
     }
 
     @Test
     void returnsAnEmptyHistoryPageWithoutLoadingCorrections() {
-        when(earnings.findAllByOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any()))
+        when(earnings.findAllByWorkdayOwnerIdOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PageImpl<>(List.of(), org.springframework.data.domain.PageRequest.of(0, 20), 0));
 
         EarningHistoryPage result = service.history(0, 20);
@@ -59,7 +65,7 @@ class EarningQueryServiceTest {
     @Test
     void returnsBaseValuesWhenAnEarningHasNoCorrection() {
         WorkdayEarning earning = earning(1L, "2026-07-06", EarningStatus.AVAILABLE, 3_600L, "12.345000000000");
-        when(earnings.findAllByOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any()))
+        when(earnings.findAllByWorkdayOwnerIdOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PageImpl<>(List.of(earning), org.springframework.data.domain.PageRequest.of(0, 1), 1));
         when(corrections.findByEarningIdInOrderByEarningIdAscSequenceDesc(List.of(1L))).thenReturn(List.of());
 
@@ -74,7 +80,7 @@ class EarningQueryServiceTest {
         WorkdayEarning earning = earning(1L, "2026-07-06", EarningStatus.AVAILABLE, 3_600L, "12.000000000000");
         EarningCorrection newest = correction(earning, 3, 1_200L, "4.000000000000");
         EarningCorrection older = correction(earning, 2, 1_800L, "6.000000000000");
-        when(earnings.findAllByOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any()))
+        when(earnings.findAllByWorkdayOwnerIdOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PageImpl<>(List.of(earning), org.springframework.data.domain.PageRequest.of(0, 1), 1));
         when(corrections.findByEarningIdInOrderByEarningIdAscSequenceDesc(List.of(1L)))
                 .thenReturn(List.of(newest, older));
@@ -91,7 +97,7 @@ class EarningQueryServiceTest {
         WorkdayEarning newest = earning(3L, "2026-07-08", EarningStatus.AVAILABLE, 3_600L, "12.000000000000");
         WorkdayEarning middle = earning(2L, "2026-07-07", EarningStatus.AVAILABLE, 3_600L, "12.000000000000");
         WorkdayEarning oldest = earning(1L, "2026-07-06", EarningStatus.AVAILABLE, 3_600L, "12.000000000000");
-        when(earnings.findAllByOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any()))
+        when(earnings.findAllByWorkdayOwnerIdOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PageImpl<>(List.of(middle), org.springframework.data.domain.PageRequest.of(1, 1), 3));
         when(corrections.findByEarningIdInOrderByEarningIdAscSequenceDesc(List.of(2L)))
                 .thenReturn(List.of(correction(middle, 1, 1_800L, "6.000000000000")));
@@ -116,7 +122,7 @@ class EarningQueryServiceTest {
                 EarningUnavailableReason.SALARY_RATE_UNAVAILABLE, 3_600L, null, null, null, null, null, 0,
                 null, null, null, Instant.parse("2026-07-01T00:00:00Z"));
         ReflectionTestUtils.setField(unavailable, "id", 1L);
-        when(earnings.findAllByOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any()))
+        when(earnings.findAllByWorkdayOwnerIdOrderByLocalDateDesc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new PageImpl<>(List.of(unavailable), org.springframework.data.domain.PageRequest.of(0, 1), 1));
         when(corrections.findByEarningIdInOrderByEarningIdAscSequenceDesc(List.of(1L))).thenReturn(List.of());
 
@@ -130,7 +136,7 @@ class EarningQueryServiceTest {
     @Test
     void usesTheSameEffectiveSemanticsForTheSingleWorkdayQuery() {
         WorkdayEarning earning = earning(1L, "2026-07-06", EarningStatus.AVAILABLE, 3_600L, "12.000000000000");
-        when(earnings.findByLocalDate(LocalDate.of(2026, 7, 6))).thenReturn(Optional.of(earning));
+        when(earnings.findByLocalDateAndWorkdayOwnerId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(Optional.of(earning));
         when(corrections.findByEarningIdOrderBySequenceDesc(1L))
                 .thenReturn(List.of(correction(earning, 2, 900L, "3.000000000000"), correction(earning, 1, 1_800L, "6.000000000000")));
 

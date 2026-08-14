@@ -12,6 +12,7 @@ import com.workworth.salary.exception.SalaryRateUnavailableException;
 import com.workworth.workday.application.WorkdayService;
 import com.workworth.workday.domain.WorkdayStatus;
 import com.workworth.workday.persistence.Workday;
+import com.workworth.identity.persistence.AppUser;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -49,9 +50,9 @@ public class EarningMaterializationService {
     private WorkdayEarning create(Workday day) {
         long seconds = workdays.time(day);
         try {
-            var rate = rates.getRate(YearMonth.from(day.getLocalDate()));
+            var rate = rates.getRate(day.getUser(), YearMonth.from(day.getLocalDate()));
             BigDecimal amount = rate.hourlyNetRate().multiply(BigDecimal.valueOf(seconds)).divide(BigDecimal.valueOf(3600), 12, RoundingMode.HALF_UP);
-            return saveAndLock(new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.AVAILABLE, seconds, amount, rate.salaryProfileId(), rate.incomeSource(), rate.monthlyNetIncome(), rate.annualNetIncome(), rate.payPeriods(), rate.currencyCode(), rate.standardEconomicHours(), rate.hourlyNetRate(), clock.instant()));
+            return saveAndLock(day, new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.AVAILABLE, seconds, amount, rate.salaryProfileId(), rate.incomeSource(), rate.monthlyNetIncome(), rate.annualNetIncome(), rate.payPeriods(), rate.currencyCode(), rate.standardEconomicHours(), rate.hourlyNetRate(), clock.instant()));
         } catch (SalaryProfileNotFoundException exception) {
             return unavailable(day, seconds, EarningUnavailableReason.SALARY_PROFILE_NOT_FOUND);
         } catch (SalaryConfigurationIncompleteException exception) {
@@ -62,12 +63,12 @@ public class EarningMaterializationService {
     }
 
     private WorkdayEarning unavailable(Workday day, long seconds, EarningUnavailableReason reason) {
-        return saveAndLock(new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.UNAVAILABLE, reason, seconds, null, null, null, null, null, 0, null, null, null, clock.instant()));
+        return saveAndLock(day, new WorkdayEarning(day.getId(), day.getLocalDate(), EarningStatus.UNAVAILABLE, reason, seconds, null, null, null, null, null, 0, null, null, null, clock.instant()));
     }
 
-    private WorkdayEarning saveAndLock(WorkdayEarning earning) {
+    private WorkdayEarning saveAndLock(Workday day, WorkdayEarning earning) {
         WorkdayEarning saved = earnings.save(earning);
-        applicationCurrencyService.lockCurrencyAfterEconomicData();
+        applicationCurrencyService.lockCurrencyAfterEconomicData(day.getUser());
         return saved;
     }
 }

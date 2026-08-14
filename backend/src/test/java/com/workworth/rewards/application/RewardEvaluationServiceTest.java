@@ -8,6 +8,7 @@ import com.workworth.earnings.application.EarningPeriodService;
 import com.workworth.earnings.domain.EarningPeriod;
 import com.workworth.earnings.domain.EarningPeriodSummary;
 import com.workworth.earnings.domain.EarningStatus;
+import com.workworth.identity.application.TestUsers;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.domain.ApplicationCurrency;
 import com.workworth.rewards.domain.RewardOutcome;
@@ -27,7 +28,8 @@ class RewardEvaluationServiceTest {
     private final RewardService rewards = mock(RewardService.class);
     private final EarningPeriodService periods = mock(EarningPeriodService.class);
     private final ApplicationCurrencyProvider currency = mock(ApplicationCurrencyProvider.class);
-    private final Reward reward = new Reward("Auriculares", 1, new BigDecimal("120.00"), "EUR", Instant.EPOCH);
+    private final Reward reward = new Reward(TestUsers.user("test|reward-evaluation"), "Auriculares", 1,
+        new BigDecimal("120.00"), "EUR", Instant.EPOCH);
     private RewardEvaluationService service;
 
     @BeforeEach

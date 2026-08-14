@@ -1,6 +1,7 @@
 package com.workworth.rewards.persistence;
 
 import com.workworth.earnings.domain.EarningPeriod;
+import com.workworth.identity.persistence.AppUser;
 import com.workworth.rewards.domain.RewardStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -24,6 +27,10 @@ public class Reward {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
     @Column(nullable = false)
     private String name;
@@ -54,7 +61,8 @@ public class Reward {
     protected Reward() {
     }
 
-    public Reward(String name, int quantity, BigDecimal price, String currencyCode, Instant createdAt) {
+    public Reward(AppUser user, String name, int quantity, BigDecimal price, String currencyCode, Instant createdAt) {
+        this.user = user;
         this.name = name;
         this.quantity = quantity;
         this.price = price;

@@ -3,6 +3,8 @@ package com.workworth.workday.application;
 import com.workworth.workday.domain.*;
 import com.workworth.workday.exception.*;
 import com.workworth.workday.persistence.*;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 
 import java.time.*;
 import java.util.*;
@@ -20,28 +22,39 @@ public class WorkdayService {
     private final WorkdayTimeCorrectionRepository corrections;
     private final EconomicTimeCalculator calculator;
     private final Clock clock;
-    private final ZoneId zone;
     private final ApplicationEventPublisher events;
+    private final CurrentUserProvider currentUser;
 
-    public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, @Value("${workworth.time-zone:Europe/Madrid}") String zone, ApplicationEventPublisher events) {
+    public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, ApplicationEventPublisher events, CurrentUserProvider currentUser) {
         workdays = w;
         breaks = b;
         absences = a;
         corrections = c;
         this.calculator = calculator;
         this.clock = clock;
-        this.zone = ZoneId.of(zone);
         this.events = events;
+        this.currentUser = currentUser;
     }
 
     @Transactional
     public Workday reconcile(LocalDate date) {
+        return reconcile(currentUser.currentUser(), date);
+    }
+
+    @Transactional
+    public Workday current() {
+        AppUser user = currentUser.currentUser();
+        return reconcile(user, LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone()))));
+    }
+
+    @Transactional
+    public Workday reconcile(AppUser user, LocalDate date) {
         Instant now = clock.instant();
         Optional<WorkdaySchedule> schedule = WorkdaySchedule.forDate(date);
         if (schedule.isEmpty()) throw new WorkdayNotFoundException("No standard workday exists for this date.");
-        Workday day = workdays.findLockedByLocalDate(date).orElseGet(() -> {
+        Workday day = workdays.findLockedByUserIdAndLocalDate(user.getId(), date).orElseGet(() -> {
             var s = schedule.get();
-            return workdays.save(new Workday(date, zone.getId(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));
+            return workdays.save(new Workday(user, date, user.getTimeZone(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));
         });
         refresh(day, now);
         return day;

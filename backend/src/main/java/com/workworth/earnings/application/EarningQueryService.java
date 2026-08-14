@@ -5,6 +5,7 @@ import com.workworth.earnings.persistence.EarningCorrection;
 import com.workworth.earnings.persistence.EarningCorrectionRepository;
 import com.workworth.earnings.persistence.WorkdayEarning;
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+import com.workworth.identity.application.CurrentUserProvider;
 
 import java.time.LocalDate;
 import java.util.Collection;
@@ -20,20 +21,23 @@ public class EarningQueryService {
 
     private final WorkdayEarningRepository earnings;
     private final EarningCorrectionRepository corrections;
+    private final CurrentUserProvider currentUser;
 
-    public EarningQueryService(WorkdayEarningRepository earnings, EarningCorrectionRepository corrections) {
+    public EarningQueryService(WorkdayEarningRepository earnings, EarningCorrectionRepository corrections,
+                               CurrentUserProvider currentUser) {
         this.earnings = earnings;
         this.corrections = corrections;
+        this.currentUser = currentUser;
     }
 
     public EffectiveEarning byDate(LocalDate date) {
-        WorkdayEarning earning = earnings.findByLocalDate(date)
+        WorkdayEarning earning = earnings.findByLocalDateAndWorkdayOwnerId(date, currentUser.currentUser().getId())
             .orElseThrow(() -> new EarningNotFoundException("No earning exists for this workday."));
         return new EffectiveEarning(earning, latestCorrection(earning.getId()));
     }
 
     public EarningHistoryPage history(int page, int size) {
-        var result = earnings.findAllByOrderByLocalDateDesc(PageRequest.of(page, size));
+        var result = earnings.findAllByWorkdayOwnerIdOrderByLocalDateDesc(currentUser.currentUser().getId(), PageRequest.of(page, size));
         Map<Long, EarningCorrection> latestCorrections = latestCorrections(result.getContent());
         List<EffectiveEarning> items = result.getContent().stream()
             .map(earning -> new EffectiveEarning(earning, latestCorrections.get(earning.getId())))
@@ -43,7 +47,7 @@ public class EarningQueryService {
     }
 
     public List<EarningCorrection> corrections(LocalDate date) {
-        WorkdayEarning earning = earnings.findByLocalDate(date)
+        WorkdayEarning earning = earnings.findByLocalDateAndWorkdayOwnerId(date, currentUser.currentUser().getId())
             .orElseThrow(() -> new EarningNotFoundException("No earning exists for this workday."));
         return corrections.findByEarningIdOrderBySequenceDesc(earning.getId());
     }

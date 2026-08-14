@@ -30,7 +30,8 @@ public class WorkdayController {
 
     @GetMapping("/current")
     public ResponseEntity<WorkdayResponse> current() {
-        return get(LocalDate.now(clock));
+        var w = service.current();
+        return ResponseEntity.ok(WorkdayResponse.from(w, service.time(w), service.mealBreaks(w), service.partialAbsences(w)));
     }
 
     @PostMapping("/{date}/meal-breaks/start")

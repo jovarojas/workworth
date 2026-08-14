@@ -11,6 +11,7 @@ import com.workworth.earnings.application.EarningPeriodService;
 import com.workworth.earnings.domain.EarningPeriod;
 import com.workworth.earnings.domain.EarningPeriodSummary;
 import com.workworth.earnings.domain.EarningStatus;
+import com.workworth.identity.application.TestUsers;
 import com.workworth.rewards.application.RewardCombination;
 import com.workworth.rewards.application.RewardCombinationRelevance;
 import com.workworth.rewards.application.RewardCombinationService;
@@ -160,7 +161,8 @@ class DashboardMotivationServiceTest {
     }
 
     private Reward reward(Long id, String name, String price) {
-        Reward reward = new Reward(name, 1, new BigDecimal(price), "EUR", Instant.EPOCH);
+        Reward reward = new Reward(TestUsers.user("test|dashboard-motivation"), name, 1,
+            new BigDecimal(price), "EUR", Instant.EPOCH);
         org.springframework.test.util.ReflectionTestUtils.setField(reward, "id", id);
         return reward;
     }

@@ -1,5 +1,8 @@
 declare const WORKWORTH_API_BASE_URL: string | undefined;
 declare const WORKWORTH_PRODUCTION: boolean | undefined;
+declare const WORKWORTH_AUTH0_DOMAIN: string | undefined;
+declare const WORKWORTH_AUTH0_CLIENT_ID: string | undefined;
+declare const WORKWORTH_AUTH0_AUDIENCE: string | undefined;
 
 const apiBaseUrl = typeof WORKWORTH_API_BASE_URL === 'string'
   ? WORKWORTH_API_BASE_URL
@@ -7,5 +10,10 @@ const apiBaseUrl = typeof WORKWORTH_API_BASE_URL === 'string'
 
 export const environment = {
   production: typeof WORKWORTH_PRODUCTION === 'boolean' ? WORKWORTH_PRODUCTION : false,
-  apiBaseUrl
+  apiBaseUrl,
+  auth0: {
+    domain: typeof WORKWORTH_AUTH0_DOMAIN === 'string' ? WORKWORTH_AUTH0_DOMAIN : '',
+    clientId: typeof WORKWORTH_AUTH0_CLIENT_ID === 'string' ? WORKWORTH_AUTH0_CLIENT_ID : '',
+    audience: typeof WORKWORTH_AUTH0_AUDIENCE === 'string' ? WORKWORTH_AUTH0_AUDIENCE : ''
+  }
 };

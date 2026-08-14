@@ -9,6 +9,7 @@ import com.workworth.earnings.persistence.EarningCorrectionRepository;
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
+import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.workday.application.WorkdayService;
 import com.workworth.workday.domain.ScheduleVariant;
 import com.workworth.workday.domain.WorkdayStatus;
@@ -46,7 +47,7 @@ import static org.hamcrest.Matchers.nullValue;
 
 @SpringBootTest(classes = WorkWorthApplication.class)
 @Testcontainers
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @Import(WorkdayToEarningsCorrectionIntegrationTest.FixedClockConfiguration.class)
 class WorkdayToEarningsCorrectionIntegrationTest {
 
@@ -74,6 +75,7 @@ class WorkdayToEarningsCorrectionIntegrationTest {
     @Autowired private PartialAbsenceRepository absences;
     @Autowired private MealBreakRepository mealBreaks;
     @Autowired private SalaryProfileRepository salaryProfiles;
+    @Autowired private CurrentUserProvider currentUser;
     @Autowired private MockMvc mvc;
 
     @BeforeEach
@@ -85,7 +87,7 @@ class WorkdayToEarningsCorrectionIntegrationTest {
         mealBreaks.deleteAllInBatch();
         workdays.deleteAllInBatch();
         salaryProfiles.deleteAllInBatch();
-        salaryProfiles.save(new SalaryProfile(
+        salaryProfiles.save(new SalaryProfile(currentUser.currentUser(),
                 LocalDate.of(2026, 7, 1), new BigDecimal("19000.00"), new BigDecimal("1300.00"),
                 "EUR", 12, Instant.parse("2026-07-01T00:00:00Z")));
     }
@@ -262,7 +264,7 @@ class WorkdayToEarningsCorrectionIntegrationTest {
     }
 
     private void saveUnavailableEarning(LocalDate withoutSalaryProfile) {
-        Workday workday = new Workday(withoutSalaryProfile, ZONE.getId(), ScheduleVariant.NORMAL,
+        Workday workday = new Workday(currentUser.currentUser(), withoutSalaryProfile, ZONE.getId(), ScheduleVariant.NORMAL,
                 LocalTime.of(8, 0), LocalTime.of(17, 0), 28_800, Instant.parse("2026-06-30T16:00:00Z"));
         workday.changeStatus(WorkdayStatus.COMPLETED, Instant.parse("2026-06-30T16:00:00Z"));
         workday = workdays.save(workday);

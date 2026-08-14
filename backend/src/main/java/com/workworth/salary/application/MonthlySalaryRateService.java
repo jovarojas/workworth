@@ -7,6 +7,8 @@ import com.workworth.salary.domain.MonthlySalaryRate;
 import com.workworth.salary.exception.SalaryConfigurationIncompleteException;
 import com.workworth.salary.exception.SalaryRateUnavailableException;
 import com.workworth.salary.persistence.SalaryProfile;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -21,17 +23,24 @@ public class MonthlySalaryRateService {
     private final SalaryProfileService salaryProfileService;
     private final ObjectProvider<StandardEconomicHoursProvider> standardEconomicHoursProvider;
     private final Clock clock;
+    private final CurrentUserProvider currentUser;
 
     public MonthlySalaryRateService(SalaryProfileService salaryProfileService,
                                     ObjectProvider<StandardEconomicHoursProvider> standardEconomicHoursProvider,
-                                    Clock clock) {
+                                    Clock clock,
+                                    CurrentUserProvider currentUser) {
         this.salaryProfileService = salaryProfileService;
         this.standardEconomicHoursProvider = standardEconomicHoursProvider;
         this.clock = clock;
+        this.currentUser = currentUser;
     }
 
     public MonthlySalaryRate getRate(YearMonth month) {
-        SalaryProfile profile = salaryProfileService.findEffectiveProfile(month);
+        return getRate(currentUser.currentUser(), month);
+    }
+
+    public MonthlySalaryRate getRate(AppUser user, YearMonth month) {
+        SalaryProfile profile = salaryProfileService.findEffectiveProfile(user, month);
         if (profile.getNetMonthlyReal() == null) {
             throw new SalaryConfigurationIncompleteException(
                 "A real monthly net income is required until a fiscal estimator is implemented.");
@@ -43,7 +52,7 @@ public class MonthlySalaryRateService {
                 "The standard work calendar is not available until SPEC 002 is implemented.");
         }
 
-        BigDecimal standardHours = provider.getStandardEconomicHours(month, clock.getZone());
+        BigDecimal standardHours = provider.getStandardEconomicHours(month, java.time.ZoneId.of(user.getTimeZone()));
         if (standardHours == null || standardHours.signum() <= 0) {
             throw new SalaryRateUnavailableException("No standard economic hours are available for " + month + ".");
         }

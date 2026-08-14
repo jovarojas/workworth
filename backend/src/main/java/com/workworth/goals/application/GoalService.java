@@ -10,6 +10,7 @@ import com.workworth.goals.persistence.Goal;
 import com.workworth.goals.persistence.GoalRepository;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.application.ApplicationCurrencyService;
+import com.workworth.identity.application.CurrentUserProvider;
 
 import java.time.Clock;
 import java.util.List;
@@ -26,34 +27,37 @@ public class GoalService {
     private final ApplicationCurrencyProvider currency;
     private final ApplicationCurrencyService currencyService;
     private final Clock clock;
+    private final CurrentUserProvider currentUser;
 
     public GoalService(GoalRepository goals, GoalProgressService progress, ApplicationCurrencyProvider currency,
-                       ApplicationCurrencyService currencyService, Clock clock) {
+                       ApplicationCurrencyService currencyService, Clock clock,
+                       CurrentUserProvider currentUser) {
         this.goals = goals;
         this.progress = progress;
         this.currency = currency;
         this.currencyService = currencyService;
         this.clock = clock;
+        this.currentUser = currentUser;
     }
 
     @Transactional
     public Goal create(CreateGoalRequest request) {
-        Goal goal = new Goal(request.title(), request.targetAmount(), currency.currentCurrency().name(), clock.instant());
+        Goal goal = new Goal(currentUser.currentUser(), request.title(), request.targetAmount(), currency.currentCurrency().name(), clock.instant());
         Goal saved = goals.save(goal);
         currencyService.lockCurrencyAfterEconomicData();
         return saved;
     }
 
     public List<Goal> active() {
-        return goals.findAllByStatusOrderByIdAsc(GoalStatus.ACTIVE);
+        return goals.findAllByUserIdAndStatusOrderByIdAsc(currentUser.currentUser().getId(), GoalStatus.ACTIVE);
     }
 
     public List<Goal> history() {
-        return goals.findAllByStatusInOrderByClosedAtDescIdDesc(List.of(GoalStatus.COMPLETED, GoalStatus.CANCELLED));
+        return goals.findAllByUserIdAndStatusInOrderByClosedAtDescIdDesc(currentUser.currentUser().getId(), List.of(GoalStatus.COMPLETED, GoalStatus.CANCELLED));
     }
 
     public Goal get(Long id) {
-        return goals.findById(id).orElseThrow(() -> new GoalNotFoundException("Goal not found."));
+        return goals.findByIdAndUserId(id, currentUser.currentUser().getId()).orElseThrow(() -> new GoalNotFoundException("Goal not found."));
     }
 
     public GoalProgress progress(Goal goal) {
@@ -92,7 +96,7 @@ public class GoalService {
     }
 
     private Goal getForUpdate(Long id) {
-        return goals.findByIdForUpdate(id).orElseThrow(() -> new GoalNotFoundException("Goal not found."));
+        return goals.findByIdAndUserIdForUpdate(id, currentUser.currentUser().getId()).orElseThrow(() -> new GoalNotFoundException("Goal not found."));
     }
 
     private void requireActive(Goal goal, String message) {

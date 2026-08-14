@@ -2,6 +2,7 @@ package com.workworth.rewards.application;
 
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.preferences.application.ApplicationCurrencyService;
+import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.rewards.api.dto.CreateRewardRequest;
 import com.workworth.rewards.api.dto.UpdateRewardRequest;
 import com.workworth.rewards.domain.RewardStatus;
@@ -24,18 +25,21 @@ public class RewardService {
     private final ApplicationCurrencyProvider currency;
     private final ApplicationCurrencyService currencyService;
     private final Clock clock;
+    private final CurrentUserProvider currentUser;
 
     public RewardService(RewardRepository rewards, ApplicationCurrencyProvider currency,
-                         ApplicationCurrencyService currencyService, Clock clock) {
+                         ApplicationCurrencyService currencyService, Clock clock,
+                         CurrentUserProvider currentUser) {
         this.rewards = rewards;
         this.currency = currency;
         this.currencyService = currencyService;
         this.clock = clock;
+        this.currentUser = currentUser;
     }
 
     @Transactional
     public Reward create(CreateRewardRequest request) {
-        Reward reward = new Reward(request.name(), request.quantity() == null ? 1 : request.quantity(), request.price(),
+        Reward reward = new Reward(currentUser.currentUser(), request.name(), request.quantity() == null ? 1 : request.quantity(), request.price(),
             currency.currentCurrency().name(), clock.instant());
         Reward saved = rewards.save(reward);
         currencyService.lockCurrencyAfterEconomicData();
@@ -43,11 +47,12 @@ public class RewardService {
     }
 
     public List<Reward> list(RewardStatus status) {
-        return status == null ? rewards.findAll() : rewards.findAllByStatusOrderByIdAsc(status);
+        return status == null ? rewards.findAllByUserIdOrderByIdAsc(currentUser.currentUser().getId())
+            : rewards.findAllByUserIdAndStatusOrderByIdAsc(currentUser.currentUser().getId(), status);
     }
 
     public Reward get(Long id) {
-        return rewards.findById(id).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
+        return rewards.findByIdAndUserId(id, currentUser.currentUser().getId()).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
     }
 
     @Transactional
@@ -83,7 +88,7 @@ public class RewardService {
     }
 
     private Reward getForUpdate(Long id) {
-        return rewards.findByIdForUpdate(id).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
+        return rewards.findByIdAndUserIdForUpdate(id, currentUser.currentUser().getId()).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
     }
 
     private void requirePending(Reward reward, String message) {

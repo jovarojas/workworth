@@ -1,14 +1,19 @@
 package com.workworth.preferences.persistence;
 
 import com.workworth.preferences.domain.ApplicationCurrency;
+import com.workworth.identity.persistence.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.MapsId;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.UUID;
 
 import lombok.Getter;
 
@@ -18,7 +23,12 @@ import lombok.Getter;
 public class ApplicationSettings {
 
     @Id
-    private Short id;
+    private UUID userId;
+
+    @OneToOne(optional = false)
+    @MapsId
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "currency_code", nullable = false, length = 3)
@@ -36,8 +46,8 @@ public class ApplicationSettings {
     protected ApplicationSettings() {
     }
 
-    public ApplicationSettings(ApplicationCurrency currencyCode, Instant createdAt) {
-        this.id = 1;
+    public ApplicationSettings(AppUser user, ApplicationCurrency currencyCode, Instant createdAt) {
+        this.user = user;
         this.currencyCode = currencyCode;
         this.createdAt = createdAt;
         this.updatedAt = createdAt;

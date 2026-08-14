@@ -6,6 +6,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.persistence.AppUser;
 import com.workworth.preferences.domain.ApplicationCurrency;
 import com.workworth.preferences.exception.ApplicationCurrencyLockedException;
 import com.workworth.preferences.persistence.ApplicationSettings;
@@ -16,26 +18,31 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ApplicationCurrencyServiceTest {
 
-    private final ApplicationSettings settings = new ApplicationSettings(
+    private final AppUser user = new AppUser(UUID.randomUUID(), "test|preferences", "preferences@test.invalid",
+        "Europe/Madrid", Instant.EPOCH);
+    private final ApplicationSettings settings = new ApplicationSettings(user,
         ApplicationCurrency.EUR, Instant.parse("2026-08-01T00:00:00Z"));
     private final ApplicationSettingsRepository settingsRepository = mock(ApplicationSettingsRepository.class);
     private final SalaryProfileRepository salaryProfiles = mock(SalaryProfileRepository.class);
     private final WorkdayEarningRepository earnings = mock(WorkdayEarningRepository.class);
+    private final CurrentUserProvider currentUser = mock(CurrentUserProvider.class);
     private ApplicationCurrencyService service;
 
     @BeforeEach
     void setUp() {
-        when(settingsRepository.findById((short) 1)).thenReturn(Optional.of(settings));
-        when(salaryProfiles.count()).thenReturn(0L);
-        when(earnings.count()).thenReturn(0L);
+        when(currentUser.currentUser()).thenReturn(user);
+        when(settingsRepository.findById(user.getId())).thenReturn(Optional.of(settings));
+        when(salaryProfiles.countByUserId(user.getId())).thenReturn(0L);
+        when(earnings.existsByWorkdayOwnerId(user.getId())).thenReturn(false);
         service = new ApplicationCurrencyService(settingsRepository, salaryProfiles, earnings,
-            Clock.fixed(Instant.parse("2026-08-12T10:00:00Z"), ZoneOffset.UTC));
+            Clock.fixed(Instant.parse("2026-08-12T10:00:00Z"), ZoneOffset.UTC), currentUser);
     }
 
     @Test
@@ -49,7 +56,7 @@ class ApplicationCurrencyServiceTest {
 
     @Test
     void locksCurrencyWhenASalaryProfileAlreadyExists() {
-        when(salaryProfiles.count()).thenReturn(1L);
+        when(salaryProfiles.countByUserId(user.getId())).thenReturn(1L);
 
         assertThatThrownBy(() -> service.updateCurrency(ApplicationCurrency.USD))
             .isInstanceOf(ApplicationCurrencyLockedException.class);
@@ -60,7 +67,7 @@ class ApplicationCurrencyServiceTest {
 
     @Test
     void locksCurrencyWhenAMaterializedEarningAlreadyExists() {
-        when(earnings.count()).thenReturn(1L);
+        when(earnings.existsByWorkdayOwnerId(user.getId())).thenReturn(true);
 
         assertThatThrownBy(() -> service.updateCurrency(ApplicationCurrency.USD))
             .isInstanceOf(ApplicationCurrencyLockedException.class);

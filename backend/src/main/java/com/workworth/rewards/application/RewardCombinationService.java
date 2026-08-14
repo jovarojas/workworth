@@ -6,6 +6,7 @@ import com.workworth.earnings.domain.EarningPeriod;
 import com.workworth.earnings.domain.EarningPeriodSummary;
 import com.workworth.earnings.domain.EarningStatus;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
+import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.rewards.domain.RewardStatus;
 import com.workworth.rewards.exception.RewardCurrencyMismatchException;
 import com.workworth.rewards.persistence.Reward;
@@ -25,12 +26,15 @@ public class RewardCombinationService {
     private final RewardRepository rewards;
     private final EarningPeriodService periods;
     private final ApplicationCurrencyProvider applicationCurrency;
+    private final CurrentUserProvider currentUser;
 
     public RewardCombinationService(RewardRepository rewards, EarningPeriodService periods,
-                                    ApplicationCurrencyProvider applicationCurrency) {
+                                    ApplicationCurrencyProvider applicationCurrency,
+                                    CurrentUserProvider currentUser) {
         this.rewards = rewards;
         this.periods = periods;
         this.applicationCurrency = applicationCurrency;
+        this.currentUser = currentUser;
     }
 
     public RewardCombination combination(EarningPeriod context, Set<Long> excludeRewardIds) {
@@ -54,7 +58,7 @@ public class RewardCombinationService {
     }
 
     private List<Reward> pendingRewards(Set<Long> excludeRewardIds) {
-        return rewards.findAllByStatusOrderByIdAsc(RewardStatus.PENDING).stream()
+        return rewards.findAllByUserIdAndStatusOrderByIdAsc(currentUser.currentUser().getId(), RewardStatus.PENDING).stream()
             .filter(reward -> !excludeRewardIds.contains(reward.getId()))
             .toList();
     }
