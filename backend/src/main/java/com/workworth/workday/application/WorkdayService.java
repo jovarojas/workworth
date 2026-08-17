@@ -52,6 +52,7 @@ public class WorkdayService {
         Instant now = clock.instant();
         Optional<WorkdaySchedule> schedule = WorkdaySchedule.forDate(date);
         if (schedule.isEmpty()) throw new WorkdayNotFoundException("No standard workday exists for this date.");
+        workdays.lockUserDate(user.getId(), date);
         Workday day = workdays.findLockedByUserIdAndLocalDate(user.getId(), date).orElseGet(() -> {
             var s = schedule.get();
             return workdays.save(new Workday(user, date, user.getTimeZone(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));

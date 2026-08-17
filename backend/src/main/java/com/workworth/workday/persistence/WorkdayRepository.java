@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import jakarta.persistence.LockModeType;
 
-public interface WorkdayRepository extends JpaRepository<Workday, Long> {
+public interface WorkdayRepository extends JpaRepository<Workday, Long>, WorkdayRepositoryCustom {
     Optional<Workday> findByUserIdAndLocalDate(UUID userId, LocalDate localDate);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
