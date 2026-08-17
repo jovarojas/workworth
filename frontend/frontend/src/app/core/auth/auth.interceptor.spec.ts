@@ -1,7 +1,6 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { AuthService } from '@auth0/auth0-angular';
 import { of } from 'rxjs';
 
 import { authenticationInterceptor } from './auth.interceptor';
@@ -11,16 +10,19 @@ import { WorkWorthAuthService } from './workworth-auth.service';
 describe('authenticationInterceptor', () => {
   let http: HttpClient;
   let requests: HttpTestingController;
-  const originalConfigured = authConfiguration.configured;
+  const originalWebConfigured = authConfiguration.webConfigured;
 
   beforeEach(() => {
-    authConfiguration.configured = true;
+    authConfiguration.webConfigured = true;
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authenticationInterceptor])),
         provideHttpClientTesting(),
-        { provide: AuthService, useValue: { getAccessTokenSilently: () => of('access-token') } },
-        { provide: WorkWorthAuthService, useValue: { login: vi.fn() } }
+        { provide: WorkWorthAuthService, useValue: {
+          configured: true,
+          accessToken$: () => of('access-token'),
+          login: vi.fn()
+        } }
       ]
     });
     http = TestBed.inject(HttpClient);
@@ -29,7 +31,7 @@ describe('authenticationInterceptor', () => {
 
   afterEach(() => {
     requests.verify();
-    authConfiguration.configured = originalConfigured;
+    authConfiguration.webConfigured = originalWebConfigured;
   });
 
   it('adds the Auth0 access token only to the configured API', () => {

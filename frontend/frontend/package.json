@@ -4,6 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:auth": "node scripts/serve-with-auth.mjs",
     "build": "ng build",
     "build:android": "npm run build:android:development",
     "build:web:production": "node scripts/build-with-api.mjs web production",

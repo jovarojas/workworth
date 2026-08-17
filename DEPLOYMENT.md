@@ -22,6 +22,11 @@ Antes de desplegar, crea un servicio PostgreSQL gestionado en el mismo proyecto 
 | `DB_PASSWORD` | Contraseña de PostgreSQL proporcionada por Railway |
 | `APP_TIME_ZONE` | `Europe/Madrid` |
 | `CORS_ALLOWED_ORIGINS` | Orígenes HTTPS separados por comas autorizados para la web y Capacitor |
+| `AUTH0_ISSUER` | `https://<tenant-auth0>/` |
+| `AUTH0_JWK_SET_URI` | `https://<tenant-auth0>/.well-known/jwks.json` |
+| `AUTH0_AUDIENCE` | Identificador estable de la API de WorkWorth |
+| `WORKWORTH_INITIAL_AUTH0_SUB` | `sub` de la primera usuaria autorizada; solo en la inicialización de la base vacía |
+| `WORKWORTH_INITIAL_USER_EMAIL` | Correo verificado de esa usuaria; solo en la inicialización de la base vacía |
 
 Railway inyecta `PORT`; la aplicación lo utiliza automáticamente y escucha en `8080` si no se proporciona. Flyway se ejecuta al iniciar el servicio. No publiques PostgreSQL ni copies secretos en el repositorio.
 
@@ -35,7 +40,7 @@ Configura Cloudflare Pages con:
 - Versión de Node: `22.14.0`.
 - Comando de compilación: `npm ci && npm run build:web:production`.
 - Directorio de salida: `dist/frontend/browser`.
-- Variable de compilación `WORKWORTH_API_BASE_URL`: la URL HTTPS real de la API terminada en `/api/v1`.
+- Variables de compilación públicas: `WORKWORTH_API_BASE_URL`, `WORKWORTH_AUTH0_DOMAIN`, `WORKWORTH_AUTH0_AUDIENCE`, `WORKWORTH_AUTH0_WEB_CLIENT_ID` y `WORKWORTH_AUTH0_ANDROID_CLIENT_ID`. La URL HTTPS real de la API termina en `/api/v1`; los demás valores identifican clientes públicos de Auth0, no secretos.
 
 Cloudflare Pages sirve Angular como SPA, por lo que las rutas existentes se resuelven mediante su comportamiento SPA por defecto.
 
