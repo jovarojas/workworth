@@ -1,0 +1,238 @@
+:host {
+  display: block;
+}
+
+.dashboard {
+  width: min(100% - 2rem, 920px);
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4.5rem) 0;
+}
+
+.dashboard__header {
+  margin-bottom: 2rem;
+
+  h1 {
+    margin: .25rem 0 .5rem;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    letter-spacing: -.05em;
+  }
+}
+
+.eyebrow {
+  margin: 0;
+  color: #56627a;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.subtitle,
+.hero__detail,
+.summary-card__detail,
+.workday-card__detail {
+  color: #56627a;
+}
+
+.hero {
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, #3f51b5, #6750a4);
+  box-shadow: 0 20px 40px rgb(63 81 181 / 22%);
+  color: white;
+
+  .eyebrow,
+  .hero__detail {
+    color: rgb(255 255 255 / 78%);
+  }
+
+  h2 {
+    margin: .5rem 0;
+    font-size: clamp(3rem, 10vw, 5rem);
+    letter-spacing: -.07em;
+    line-height: 1;
+  }
+}
+
+.hero__loading,
+.hero__feedback {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: 6rem;
+  color: rgb(255 255 255 / 90%);
+
+  p {
+    margin: 0;
+  }
+}
+
+.hero__feedback mat-icon {
+  flex: 0 0 auto;
+}
+
+.workday-section {
+  margin: 1rem 0;
+}
+
+.motivation-section {
+  margin: 1rem 0;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.summary-card,
+.workday-card,
+.motivation-card {
+  border: 1px solid #e1e5ee;
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.motivation-card {
+  background: #f7f8ff;
+  border-color: #cfd8ff;
+
+  h2 {
+    margin: .5rem 0;
+    color: #172033;
+  }
+
+  a { margin-top: 1.25rem; }
+}
+
+.motivation-card__loading,
+.motivation-card__detail {
+  margin: .75rem 0 0;
+  color: #56627a;
+}
+
+.motivation-card__loading {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: 4rem;
+}
+
+.motivation-card__amounts {
+  display: grid;
+  gap: .2rem;
+  margin-top: 1.25rem;
+
+  strong { font-size: clamp(1.75rem, 4vw, 2.2rem); color: #172033; }
+  span { color: #56627a; font-size: .875rem; }
+}
+
+.motivation-combination {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #cfd8ff;
+  color: #384860;
+
+  p { margin: .5rem 0; }
+  ul { margin: .75rem 0; padding-left: 1.2rem; }
+  li + li { margin-top: .35rem; }
+}
+
+.motivation-combination__amounts { font-weight: 700; }
+
+.summary-card {
+  min-height: 10rem;
+
+  strong {
+    display: block;
+    margin: .65rem 0 .25rem;
+    font-size: clamp(1.75rem, 4vw, 2.2rem);
+  }
+}
+
+.summary-card--all-time {
+  border-color: #c8d0f4;
+  background: #f7f8ff;
+}
+
+.summary-card__detail,
+.summary-card__loading {
+  display: block;
+  font-size: .875rem;
+}
+
+.summary-card__loading {
+  margin-top: 1rem;
+  color: #56627a;
+}
+
+.workday-card__heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+
+  h2 {
+    margin: .25rem 0 0;
+  }
+}
+
+.status {
+  padding: .35rem .6rem;
+  border-radius: 99px;
+  background: #eef0f5;
+  color: #344054;
+  font-size: .75rem;
+  font-weight: 700;
+
+  &--active {
+    background: #dcf8e9;
+    color: #126238;
+  }
+
+  &--break {
+    background: #fff2cc;
+    color: #765300;
+  }
+}
+
+.schedule {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin-top: 1.5rem;
+  color: #344054;
+}
+
+.schedule div {
+  display: grid;
+  gap: .125rem;
+}
+
+.schedule__time {
+  font-weight: 700;
+}
+
+.schedule__zone {
+  color: #697586;
+  font-size: .875rem;
+}
+
+.workday-card__detail {
+  margin: 1.25rem 0 0;
+}
+
+.card-feedback {
+  margin: 1rem 0 0;
+  color: #b42318;
+  font-size: .9rem;
+}
+
+@media (max-width: 520px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workday-card__heading {
+    flex-direction: column;
+  }
+}

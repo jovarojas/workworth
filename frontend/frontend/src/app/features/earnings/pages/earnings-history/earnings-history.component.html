@@ -1,0 +1,62 @@
+<main class="earnings-history">
+  <header class="earnings-history__header">
+    <p class="eyebrow">GANANCIAS</p>
+    <h1>Historial de ganancias</h1>
+    <p>Consulta las ganancias efectivas registradas por cada jornada.</p>
+  </header>
+
+  @if (loading()) {
+    <section class="loading" aria-live="polite">
+      <mat-spinner diameter="32" />
+      <span>Cargando historial…</span>
+    </section>
+  } @else if (error(); as errorMessage) {
+    <section class="feedback feedback--error" role="alert">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>{{ errorMessage }}</p>
+      <button mat-stroked-button type="button" (click)="loadPage(history()?.page ?? 0)">Reintentar</button>
+    </section>
+  } @else if (history(); as currentHistory) {
+    @if (currentHistory.items.length === 0) {
+      <section class="empty" aria-live="polite">
+        <mat-icon aria-hidden="true">receipt_long</mat-icon>
+        <p>Aún no hay ganancias registradas.</p>
+      </section>
+    } @else {
+      <section class="earning-list" aria-label="Jornadas con ganancias registradas">
+        @for (earning of currentHistory.items; track earning.localDate) {
+          <mat-card class="earning-row">
+            <mat-card-content>
+              <div>
+                <p class="earning-row__date">{{ earning.localDate }}</p>
+                <span class="earning-row__status" [class.earning-row__status--unavailable]="earning.status === 'UNAVAILABLE'">
+                  {{ earningStatusLabel(earning.status) }}
+                </span>
+              </div>
+              <div class="earning-row__value">
+                @if (earning.status === 'AVAILABLE' && earning.amount !== null && earning.currencyCode !== null) {
+                  <strong>{{ earning.amount | currency:earning.currencyCode:'symbol':'1.2-2' }}</strong>
+                  <small>{{ earning.currencyCode }}</small>
+                } @else {
+                  <span>No disponible</span>
+                  @if (unavailableReasonLabel(earning.unavailableReason); as reason) { <small>{{ reason }}</small> }
+                }
+              </div>
+              <a mat-stroked-button [routerLink]="['/earnings/workdays', earning.localDate]" [attr.aria-label]="'Ver detalle de la jornada ' + earning.localDate">
+                Ver detalle
+              </a>
+            </mat-card-content>
+          </mat-card>
+        }
+      </section>
+    }
+
+    @if (currentHistory.totalPages > 0) {
+      <nav class="pagination" aria-label="Paginación del historial">
+        <button mat-stroked-button type="button" [disabled]="loading() || !currentHistory.hasPrevious" (click)="previousPage()">Anterior</button>
+        <span>Página {{ currentHistory.page + 1 }} de {{ currentHistory.totalPages }} · {{ currentHistory.totalElements }} registros</span>
+        <button mat-stroked-button type="button" [disabled]="loading() || !currentHistory.hasNext" (click)="nextPage()">Siguiente</button>
+      </nav>
+    }
+  }
+</main>

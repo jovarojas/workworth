@@ -1,0 +1,69 @@
+<main class="earning-detail">
+  <a mat-stroked-button routerLink="/earnings" class="back-link"><mat-icon aria-hidden="true">arrow_back</mat-icon> Volver al historial</a>
+
+  <header class="earning-detail__header">
+    <p class="eyebrow">DETALLE DE JORNADA</p>
+    <h1>{{ date() || 'Ganancia' }}</h1>
+  </header>
+
+  @if (loading()) {
+    <section class="loading" aria-live="polite"><mat-spinner diameter="32" /> <span>Cargando ganancia…</span></section>
+  } @else if (error(); as errorMessage) {
+    <section class="feedback feedback--error" role="alert"><mat-icon aria-hidden="true">cloud_off</mat-icon><p>{{ errorMessage }}</p></section>
+  } @else if (earning(); as currentEarning) {
+    <section class="detail-grid" aria-label="Ganancia efectiva de la jornada">
+      <mat-card>
+        <mat-card-content>
+          <p class="eyebrow">ESTADO</p>
+          <h2>{{ earningStatusLabel(currentEarning.status) }}</h2>
+          @if (currentEarning.status === 'AVAILABLE' && currentEarning.amount !== null && currentEarning.currencyCode !== null) {
+            <p class="amount">{{ currentEarning.amount | currency:currentEarning.currencyCode:'symbol':'1.2-2' }}</p>
+            <p class="detail-note">{{ currentEarning.currencyCode }}</p>
+          } @else {
+            <p class="amount">No disponible</p>
+            @if (unavailableReasonLabel(currentEarning.unavailableReason); as reason) { <p class="detail-note">{{ reason }}</p> }
+          }
+        </mat-card-content>
+      </mat-card>
+      <mat-card>
+        <mat-card-content>
+          <p class="eyebrow">TIEMPO ECONÓMICO REGISTRADO</p>
+          <h2>{{ currentEarning.economicSeconds }} segundos</h2>
+          <p class="detail-note">Valor efectivo recibido de WorkWorth.</p>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <section class="corrections" aria-labelledby="corrections-heading">
+      <div class="corrections__heading">
+        <div><p class="eyebrow">AUDITORÍA</p><h2 id="corrections-heading">Correcciones</h2></div>
+        <p>Historial informativo; no modifica la ganancia mostrada.</p>
+      </div>
+
+      @if (correctionsLoading()) {
+        <div class="loading loading--compact" aria-live="polite"><mat-spinner diameter="24" /> <span>Cargando correcciones…</span></div>
+      } @else if (correctionsError(); as errorMessage) {
+        <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+      } @else if (corrections().length === 0) {
+        <div class="empty">Aún no hay correcciones para esta jornada.</div>
+      } @else {
+        <div class="correction-list">
+          @for (correction of corrections(); track correction.sequence) {
+            <mat-card>
+              <mat-card-content>
+                <div class="correction__heading"><strong>Corrección #{{ correction.sequence }}</strong><span>{{ correctionCauseLabel(correction.cause) }}</span></div>
+                <dl>
+                  <div><dt>Tiempo anterior</dt><dd>{{ correction.previousEconomicSeconds }} segundos</dd></div>
+                  <div><dt>Tiempo nuevo</dt><dd>{{ correction.newEconomicSeconds }} segundos</dd></div>
+                  <div><dt>Importe anterior</dt><dd>@if (correction.previousAmount === null || currentEarning.currencyCode === null) { No disponible } @else { {{ correction.previousAmount | currency:currentEarning.currencyCode:'symbol':'1.2-2' }} {{ currentEarning.currencyCode }} }</dd></div>
+                  <div><dt>Importe nuevo</dt><dd>@if (correction.newAmount === null || currentEarning.currencyCode === null) { No disponible } @else { {{ correction.newAmount | currency:currentEarning.currencyCode:'symbol':'1.2-2' }} {{ currentEarning.currencyCode }} }</dd></div>
+                  <div><dt>Corregida en</dt><dd>{{ correction.correctedAt }}</dd></div>
+                </dl>
+              </mat-card-content>
+            </mat-card>
+          }
+        </div>
+      }
+    </section>
+  }
+</main>

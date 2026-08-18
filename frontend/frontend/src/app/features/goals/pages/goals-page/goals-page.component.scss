@@ -1,0 +1,37 @@
+:host { display: block; }
+
+.goals-page { width: min(100% - 2rem, 920px); margin: 0 auto; padding: clamp(2rem, 5vw, 4.5rem) 0; }
+.goals-page__header { margin-bottom: 2rem; }
+.goals-page__header h1 { margin: .25rem 0 .5rem; color: #172033; font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -.05em; }
+.goals-page__header p:last-child { max-width: 42rem; margin: 0; color: #56627a; }
+.eyebrow { margin: 0; color: #56627a; font-size: .75rem; font-weight: 700; letter-spacing: .12em; }
+.goal-section { margin-top: 2.5rem; }
+.goal-section__header, .goal-card__heading, .goal-card__actions { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.goal-section__header h2 { margin: .2rem 0 0; color: #172033; }
+.goal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.goal-card, .goal-form-section mat-card { border: 1px solid #e1e5ee; border-radius: 1rem; box-shadow: none; }
+.goal-card--closed { background: #f8fafc; }
+.goal-card h3 { margin: 0; color: #172033; }
+.goal-card__heading span { color: #56627a; font-size: .75rem; font-weight: 700; }
+.goal-card strong { display: block; margin: 1.5rem 0 .25rem; color: #172033; font-size: 1.5rem; }
+.goal-card small { color: #697586; }
+.goal-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin: 1.25rem 0 0; }
+.goal-progress div { min-width: 0; }
+.goal-progress dt { color: #697586; font-size: .75rem; }
+.goal-progress dd { margin: .2rem 0 0; color: #172033; font-weight: 700; }
+.goal-card__progress { margin: 1rem 0 0; color: #384860; }
+.goal-card__actions { flex-wrap: wrap; justify-content: flex-start; margin-top: 1.5rem; }
+.loading, .feedback, .empty { display: flex; align-items: center; gap: .75rem; min-height: 5rem; color: #56627a; }
+.feedback { min-height: auto; margin: 1rem 0; }
+.feedback p, .empty p { margin: 0; }
+.feedback--error { color: #b42318; }
+.feedback--success { color: #067647; }
+.goal-form-section h2 { margin: .3rem 0 .5rem; color: #172033; }
+.goal-form-section > mat-card > mat-card-content > p:not(.eyebrow):not(.feedback) { margin: 0 0 1.25rem; color: #56627a; }
+
+@media (max-width: 620px) {
+  .goal-grid { grid-template-columns: 1fr; }
+  .goal-section__header { align-items: flex-start; flex-direction: column; }
+  .goal-section__header button, .goal-card__actions button { width: 100%; }
+  .goal-progress { grid-template-columns: 1fr; }
+}

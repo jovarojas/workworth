@@ -1,0 +1,177 @@
+<main class="rewards-page">
+  <header class="rewards-page__header">
+    <p class="eyebrow">RECOMPENSAS</p>
+    <h1>Tus próximas recompensas</h1>
+    <p>Guarda las cosas que quieres conseguir con lo que registras en WorkWorth.</p>
+  </header>
+
+  @if (recentlyReached().length > 0) {
+    <section class="reward-section reward-section--recent" aria-labelledby="recent-heading" aria-live="polite">
+      <header class="reward-section__header">
+        <div>
+          <p class="eyebrow">RECIENTEMENTE ALCANZADAS</p>
+          <h2 id="recent-heading">Ahora están a tu alcance</h2>
+        </div>
+      </header>
+      <div class="reward-grid">
+        @for (reward of recentlyReached(); track reward.id) {
+          <mat-card class="reward-card reward-card--recent">
+            <mat-card-content>
+              <h3>{{ rewardLabel(reward) }}</h3>
+              <strong>{{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</strong>
+              <p>{{ relevanceMessage(reward) }}</p>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    </section>
+  }
+
+  <section class="reward-section" aria-labelledby="combination-heading">
+    <header class="reward-section__header">
+      <div>
+        <p class="eyebrow">COMBINACIÓN RELEVANTE</p>
+        <h2 id="combination-heading">Una forma de disfrutarlo</h2>
+      </div>
+      <button mat-stroked-button type="button" [disabled]="combinationLoading()" (click)="loadRelevantCombination()">
+        Actualizar
+      </button>
+    </header>
+    @if (combinationLoading() && !relevantCombination()) {
+      <div class="loading" aria-live="polite"><mat-spinner diameter="28" /> Buscando una combinación…</div>
+    } @else if (combinationError(); as errorMessage) {
+      <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+    } @else if (relevantCombination(); as combination) {
+      <mat-card class="combination-card" aria-live="polite">
+        <mat-card-content>
+          <p>Con lo registrado <strong>{{ contextLabel(combination.context) }}</strong> puedes conseguir:</p>
+          <ul>
+            @for (reward of combination.rewards; track reward.id) {
+              <li>{{ rewardLabel(reward) }} · {{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</li>
+            }
+          </ul>
+          <p class="combination-card__amounts">
+            Total: {{ combination.totalPrice | currency:combination.currencyCode:'symbol':'1.2-2' }}
+            · Disponible: {{ combination.availableAmount | currency:combination.currencyCode:'symbol':'1.2-2' }}
+          </p>
+          <button mat-flat-button type="button" [disabled]="combinationLoading()" (click)="requestAnotherCombination()">
+            @if (combinationLoading()) { Buscando… } @else { Ver otra combinación }
+          </button>
+          @if (otherCombinationUnavailable()) {
+            <p class="feedback" role="status">No hay otra combinación válida para este contexto.</p>
+          }
+        </mat-card-content>
+      </mat-card>
+    } @else if (combinationEvaluable() === false) {
+      <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">cloud_off</mat-icon><p>Ahora mismo no podemos evaluar combinaciones con las ganancias registradas.</p></div>
+    } @else {
+      <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">redeem</mat-icon><p>Aún no hay una combinación de recompensas disponible.</p></div>
+    }
+  </section>
+
+  <section class="reward-section" aria-labelledby="pending-heading">
+    <header class="reward-section__header">
+      <div>
+        <p class="eyebrow">PENDIENTES</p>
+        <h2 id="pending-heading">Por conseguir</h2>
+      </div>
+      <button mat-stroked-button type="button" [disabled]="pendingLoading()" (click)="loadPending()">Actualizar</button>
+    </header>
+
+    @if (pendingLoading() && pending().length === 0) {
+      <div class="loading" aria-live="polite"><mat-spinner diameter="28" /> Cargando pendientes…</div>
+    }
+    @if (pendingError(); as errorMessage) {
+      <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+    }
+    @if (!pendingLoading() && !pendingError() && pending().length === 0) {
+      <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">redeem</mat-icon><p>Aún no tienes recompensas pendientes.</p></div>
+    }
+    @if (pending().length > 0) {
+      <div class="reward-grid" aria-label="Recompensas pendientes">
+        @for (reward of pending(); track reward.id) {
+          <mat-card class="reward-card">
+            <mat-card-content>
+              <div class="reward-card__heading">
+                <h3>{{ rewardLabel(reward) }}</h3>
+                <span>{{ rewardStatusLabel(reward.status) }}</span>
+              </div>
+              <strong>{{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</strong>
+              <small>{{ reward.currencyCode }} · Precio total</small>
+              @if (relevanceLoadingIds().has(reward.id)) {
+                <p class="reward-card__relevance" aria-live="polite">Actualizando disponibilidad…</p>
+              } @else if (relevanceErrors()[reward.id]; as errorMessage) {
+                <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p>
+              } @else if (relevanceMessage(reward); as message) {
+                <p class="reward-card__relevance" aria-live="polite">{{ message }}</p>
+              }
+              <div class="reward-card__actions">
+                <button mat-stroked-button type="button" [disabled]="isActionInProgress(reward.id)" (click)="edit(reward)">Editar</button>
+                <button mat-stroked-button type="button" color="warn" [disabled]="isActionInProgress(reward.id)" (click)="confirmDelete(reward)">Eliminar</button>
+                <button mat-flat-button type="button" [disabled]="isActionInProgress(reward.id)" (click)="acquire(reward)">
+                  @if (isActionInProgress(reward.id)) { Guardando… } @else { Marcar como conseguida }
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="reward-section" aria-labelledby="acquired-heading">
+    <header class="reward-section__header">
+      <div>
+        <p class="eyebrow">CONSEGUIDAS</p>
+        <h2 id="acquired-heading">Ya conseguidas</h2>
+      </div>
+      <button mat-stroked-button type="button" [disabled]="acquiredLoading()" (click)="loadAcquired()">Actualizar</button>
+    </header>
+    @if (acquiredLoading() && acquired().length === 0) {
+      <div class="loading" aria-live="polite"><mat-spinner diameter="28" /> Cargando conseguidas…</div>
+    }
+    @if (acquiredError(); as errorMessage) {
+      <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+    }
+    @if (!acquiredLoading() && !acquiredError() && acquired().length === 0) {
+      <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">task_alt</mat-icon><p>Aún no has marcado recompensas como conseguidas.</p></div>
+    }
+    @if (acquired().length > 0) {
+      <div class="reward-grid" aria-label="Recompensas conseguidas">
+        @for (reward of acquired(); track reward.id) {
+          <mat-card class="reward-card reward-card--acquired">
+            <mat-card-content>
+              <div class="reward-card__heading">
+                <h3>{{ rewardLabel(reward) }}</h3>
+                <span>{{ rewardStatusLabel(reward.status) }}</span>
+              </div>
+              <strong>{{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</strong>
+              <small>{{ reward.currencyCode }} · Precio total</small>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="reward-section reward-form-section" aria-labelledby="reward-form-heading">
+    <mat-card>
+      <mat-card-content>
+        <p class="eyebrow">{{ editingReward() ? 'EDITAR RECOMPENSA' : 'NUEVA RECOMPENSA' }}</p>
+        <h2 id="reward-form-heading">{{ editingReward() ? 'Actualiza tu recompensa' : 'Añade algo que te ilusione' }}</h2>
+        <p class="reward-form-section__detail">El precio es el total de la recompensa completa.</p>
+        <app-reward-form
+          [reward]="editingReward()"
+          [saving]="formSaving()"
+          (submitted)="saveReward($event)"
+          (cancelled)="cancelEdit()"></app-reward-form>
+        @if (actionError(); as errorMessage) {
+          <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p>
+        }
+        @if (actionSuccess(); as successMessage) {
+          <p class="feedback feedback--success" aria-live="polite">{{ successMessage }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+</main>

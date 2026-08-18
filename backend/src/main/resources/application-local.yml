@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    password: ${DB_PASSWORD:workworth-local-dev}
+  jpa:
+    show-sql: true
+
+server:
+  port: ${SERVER_PORT:8081}
+
+workworth:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,https://localhost}

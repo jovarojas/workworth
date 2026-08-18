@@ -1,0 +1,80 @@
+apply plugin: 'com.android.application'
+
+def auth0Configuration = new Properties()
+def auth0ConfigurationFile = file("$buildDir/generated/auth0.properties")
+if (auth0ConfigurationFile.exists()) {
+    auth0ConfigurationFile.withInputStream { stream -> auth0Configuration.load(stream) }
+}
+
+def auth0Domain = System.getenv('WORKWORTH_AUTH0_DOMAIN') ?: auth0Configuration.getProperty('auth0Domain', '')
+def auth0Audience = System.getenv('WORKWORTH_AUTH0_AUDIENCE') ?: auth0Configuration.getProperty('auth0Audience', '')
+def auth0ClientId = System.getenv('WORKWORTH_AUTH0_ANDROID_CLIENT_ID') ?: auth0Configuration.getProperty('auth0ClientId', '')
+
+android {
+    namespace = "com.workworth.app"
+    compileSdk = rootProject.ext.compileSdkVersion
+    buildFeatures {
+        buildConfig true
+    }
+    defaultConfig {
+        applicationId "com.workworth.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders = [
+            auth0Domain: auth0Domain,
+            auth0Scheme: 'com.workworth.app'
+        ]
+        buildConfigField "String", "AUTH0_DOMAIN", "\"${auth0Domain}\""
+        buildConfigField "String", "AUTH0_AUDIENCE", "\"${auth0Audience}\""
+        buildConfigField "String", "AUTH0_CLIENT_ID", "\"${auth0ClientId}\""
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    sourceSets {
+        debug {
+            res.srcDir("$buildDir/generated/res/developmentNetworkSecurity")
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    implementation 'com.auth0.android:auth0:3.19.0'
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

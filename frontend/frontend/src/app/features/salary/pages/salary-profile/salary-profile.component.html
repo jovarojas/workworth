@@ -1,0 +1,150 @@
+<main class="salary-page">
+  <header class="salary-page__header">
+    <p class="eyebrow">CONFIGURACIÓN SALARIAL</p>
+    <h1>Tu neto mensual real</h1>
+    <p>WorkWorth utiliza este dato para que el backend calcule tus ganancias registradas.</p>
+  </header>
+
+  @if (loadingProfile()) {
+    <section class="loading" aria-live="polite">
+      <mat-spinner diameter="32" />
+      <span>Cargando perfil salarial…</span>
+    </section>
+  } @else if (profileError(); as errorMessage) {
+    <section class="feedback feedback--error" role="alert">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>{{ errorMessage }}</p>
+      <button mat-stroked-button type="button" (click)="loadCurrentProfile()">Reintentar</button>
+    </section>
+  } @else if (profile(); as currentProfile) {
+    <section class="salary-grid" aria-label="Perfil salarial vigente">
+      <mat-card class="profile-card">
+        <mat-card-content>
+          <p class="eyebrow">PERFIL VIGENTE</p>
+          <h2>Fuente: {{ incomeSourceLabel(currentProfile.activeIncomeSource) }}</h2>
+          <dl class="profile-data">
+            <div>
+              <dt>Neto mensual real</dt>
+              <dd>
+                @if (currentProfile.netMonthlyReal !== null) {
+                  {{ currentProfile.netMonthlyReal | currency:currentProfile.currencyCode:'symbol':'1.2-2' }}
+                } @else {
+                  No disponible
+                }
+              </dd>
+            </div>
+            <div>
+              <dt>Neto anual derivado</dt>
+              <dd>
+                @if (currentProfile.netAnnualReal !== null) {
+                  {{ currentProfile.netAnnualReal | currency:currentProfile.currencyCode:'symbol':'1.2-2' }}
+                } @else {
+                  No disponible
+                }
+              </dd>
+            </div>
+            <div><dt>Vigente desde</dt><dd>{{ currentProfile.effectiveFrom }}</dd></div>
+            <div><dt>Pagas</dt><dd>{{ currentProfile.payPeriods }}</dd></div>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="rate-card">
+        <mat-card-content>
+          <p class="eyebrow">TARIFA DEL MES {{ profileMonth() }}</p>
+          @if (loadingRate()) {
+            <div class="loading loading--compact" aria-live="polite"><mat-spinner diameter="24" /> Cargando tarifa…</div>
+          } @else if (rateError(); as errorMessage) {
+            <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+          } @else if (rate(); as monthlyRate) {
+            <h2>{{ monthlyRate.hourlyNetRate | currency:monthlyRate.currencyCode:'symbol':'1.2-2' }}</h2>
+            <p class="rate-card__detail">Tarifa neta por hora proporcionada por WorkWorth.</p>
+            <dl class="profile-data profile-data--compact">
+              <div><dt>Neto mensual</dt><dd>{{ monthlyRate.monthlyNetIncome | currency:monthlyRate.currencyCode:'symbol':'1.2-2' }}</dd></div>
+              <div><dt>Horas estándar</dt><dd>{{ monthlyRate.standardEconomicHours }}</dd></div>
+            </dl>
+          }
+        </mat-card-content>
+      </mat-card>
+    </section>
+  } @else if (profileMissing()) {
+    <section class="salary-grid salary-grid--setup">
+      <mat-card class="setup-card">
+        <mat-card-content>
+          <p class="eyebrow">PRIMERA CONFIGURACIÓN</p>
+          <h2>Indica tu neto mensual real</h2>
+          <p class="setup-card__intro">Es el importe que recibes habitualmente en cada una de tus 12 pagas.</p>
+
+          @if (loadingCurrency()) {
+            <div class="loading loading--compact" aria-live="polite"><mat-spinner diameter="24" /> Cargando moneda global…</div>
+          } @else if (currencyError(); as errorMessage) {
+            <div class="feedback feedback--error" role="alert">
+              <p>{{ errorMessage }}</p>
+              <button mat-stroked-button type="button" (click)="loadApplicationCurrency()">Reintentar</button>
+            </div>
+          }
+
+          <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <mat-form-field appearance="outline">
+              <mat-label>Neto mensual real</mat-label>
+              <input matInput formControlName="netMonthlyReal" inputmode="decimal" autocomplete="off" aria-describedby="net-monthly-help" />
+              @if (applicationCurrency(); as settings) {
+                <span matTextSuffix>{{ settings.currencyCode }}</span>
+              }
+              <mat-hint id="net-monthly-help">Máximo dos decimales.</mat-hint>
+              @if (controlError('netMonthlyReal'); as error) { <mat-error>{{ error }}</mat-error> }
+            </mat-form-field>
+            @if (fieldErrors()['netMonthlyReal']; as error) { <p class="field-error" role="alert">{{ error }}</p> }
+
+            <mat-form-field appearance="outline">
+              <mat-label>Vigente desde</mat-label>
+              <input matInput type="date" formControlName="effectiveFrom" />
+              @if (controlError('effectiveFrom'); as error) { <mat-error>{{ error }}</mat-error> }
+            </mat-form-field>
+            @if (fieldErrors()['effectiveFrom']; as error) { <p class="field-error" role="alert">{{ error }}</p> }
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Moneda</mat-label>
+                <input matInput formControlName="currencyCode" readonly aria-readonly="true" />
+                @if (controlError('currencyCode'); as error) { <mat-error>{{ error }}</mat-error> }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Pagas</mat-label>
+                <input matInput type="number" formControlName="payPeriods" readonly aria-readonly="true" />
+                @if (controlError('payPeriods'); as error) { <mat-error>{{ error }}</mat-error> }
+              </mat-form-field>
+            </div>
+
+            @if (submitError(); as errorMessage) {
+              <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+            }
+
+            <button mat-flat-button type="submit" [disabled]="saving() || loadingCurrency() || !!currencyError()">
+              @if (saving()) { Guardando… } @else { Guardar neto mensual real }
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </section>
+  }
+
+  <section class="estimator" aria-labelledby="estimator-heading">
+    <mat-card>
+      <mat-card-content>
+        <p class="eyebrow">ESTIMACIÓN FISCAL</p>
+        @if (loadingEstimator()) {
+          <p aria-live="polite">Consultando el estado del estimador…</p>
+        } @else if (estimatorError(); as errorMessage) {
+          <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p>
+        } @else if (estimator(); as estimatorStatus) {
+          <h2 id="estimator-heading">{{ estimatorStatusLabel(estimatorStatus.status) }}</h2>
+          @if (estimatorNotImplemented()) {
+            <p>La estimación fiscal todavía no está disponible. Tu neto mensual real sigue siendo el dato de referencia.</p>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+</main>

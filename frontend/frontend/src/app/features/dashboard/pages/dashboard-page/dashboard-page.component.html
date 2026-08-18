@@ -1,0 +1,236 @@
+<main class="dashboard">
+  <header class="dashboard__header">
+    <p class="eyebrow">WORKWORTH</p>
+    <h1>Tu trabajo, en valor real.</h1>
+    <p class="subtitle">Sigue lo que estás construyendo con tu tiempo.</p>
+  </header>
+
+  <section class="hero" aria-labelledby="today-earning">
+    <p class="eyebrow">GANANCIA ACTUAL DE HOY</p>
+    @if (projectionLoading()) {
+      <div class="hero__loading" aria-live="polite">
+        <mat-spinner diameter="32" />
+        <span>Cargando la ganancia de hoy…</span>
+      </div>
+    } @else if (projectionError(); as errorMessage) {
+      <div class="hero__feedback" role="alert">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p>{{ errorMessage }}</p>
+      </div>
+    } @else if (projection(); as currentProjection) {
+      @if (isUnavailable() || !currentProjection.currencyCode) {
+        <h2 id="today-earning">No disponible</h2>
+        <p class="hero__detail">
+          {{ unavailableReasonLabel(currentProjection.unavailableReason) || 'No hay una moneda disponible para la ganancia de hoy.' }}
+        </p>
+      } @else {
+        <h2 id="today-earning">
+          {{ currentProjection.amount | currency:currentProjection.currencyCode:'symbol':'1.2-2' }} {{ currentProjection.currencyCode }}
+        </h2>
+        <p class="hero__detail">Ganancia neta proporcionada por WorkWorth para la jornada de hoy.</p>
+      }
+    }
+  </section>
+
+  <section class="motivation-section" aria-labelledby="motivation-heading">
+    <mat-card class="motivation-card" aria-live="polite">
+      <mat-card-content>
+        <p class="eyebrow">MOTIVACIÓN ACTUAL</p>
+        @if (motivationLoading()) {
+          <div id="motivation-heading" class="motivation-card__loading">
+            <mat-spinner diameter="24" />
+            <span>Cargando motivación…</span>
+          </div>
+        } @else if (motivationError(); as errorMessage) {
+          <p id="motivation-heading" class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (motivation(); as currentMotivation) {
+          @switch (currentMotivation.state) {
+            @case ('EMPTY') {
+              <h2 id="motivation-heading">Convierte lo que ganas en algo que te ilusione.</h2>
+              <p class="motivation-card__detail">Añade una recompensa y WorkWorth la relacionará con tus ganancias registradas.</p>
+              <a mat-stroked-button routerLink="/rewards">Crear una recompensa</a>
+            }
+            @case ('UNAVAILABLE') {
+              <h2 id="motivation-heading">Ahora mismo no podemos evaluar tus recompensas.</h2>
+              <p class="motivation-card__detail">Cuando exista un importe evaluable, volveremos a mostrarte qué puedes conseguir.</p>
+              <a mat-stroked-button routerLink="/rewards">Ver recompensas</a>
+            }
+            @case ('AVAILABLE') {
+              @if (currentMotivation.primaryReward; as primaryReward) {
+                <h2 id="motivation-heading">Ya puedes conseguir {{ rewardLabel(primaryReward.reward) }}.</h2>
+                @if (primaryReward.relevantContext; as context) {
+                  <p class="motivation-card__detail">Con lo registrado {{ contextLabel(context) }}.</p>
+                }
+                <div class="motivation-card__amounts">
+                  <strong>{{ primaryReward.reward.price | currency:primaryReward.reward.currencyCode:'symbol':'1.2-2' }}</strong>
+                  <span>{{ primaryReward.reward.currencyCode }} · Precio total</span>
+                </div>
+                @if (primaryReward.surplus !== null) {
+                  <p class="motivation-card__detail">Después te quedarían {{ primaryReward.surplus | currency:primaryReward.reward.currencyCode:'symbol':'1.2-2' }}.</p>
+                }
+                @if (currentMotivation.combination; as combination) {
+                  <div class="motivation-combination" aria-label="Combinación relevante">
+                    <p class="eyebrow">TAMBIÉN PUEDES COMBINAR</p>
+                    <p>Con lo registrado {{ contextLabel(combination.context) }} puedes conseguir:</p>
+                    <ul>
+                      @for (reward of combination.rewards; track reward.id) {
+                        <li>{{ rewardLabel(reward) }} · {{ reward.price | currency:reward.currencyCode:'symbol':'1.2-2' }}</li>
+                      }
+                    </ul>
+                    <p class="motivation-combination__amounts">
+                      Total: {{ combination.totalPrice | currency:combination.currencyCode:'symbol':'1.2-2' }}
+                      · Disponible: {{ combination.availableAmount | currency:combination.currencyCode:'symbol':'1.2-2' }}
+                      · {{ combination.currencyCode }}
+                    </p>
+                  </div>
+                }
+                <a mat-stroked-button routerLink="/rewards">Ver recompensas</a>
+              }
+            }
+            @case ('PROGRESS') {
+              @if (currentMotivation.primaryReward; as primaryReward) {
+                <h2 id="motivation-heading">{{ rewardLabel(primaryReward.reward) }} está cada vez más cerca.</h2>
+                @if (primaryReward.shortfall !== null) {
+                  <p class="motivation-card__detail">
+                    Te faltan {{ primaryReward.shortfall | currency:primaryReward.reward.currencyCode:'symbol':'1.2-2' }}
+                    para conseguirla.
+                  </p>
+                }
+                @if (primaryReward.progressContext; as context) {
+                  <p class="motivation-card__detail">Progreso calculado con lo registrado {{ contextLabel(context) }}.</p>
+                }
+                <div class="motivation-card__amounts">
+                  <strong>{{ primaryReward.reward.price | currency:primaryReward.reward.currencyCode:'symbol':'1.2-2' }}</strong>
+                  <span>{{ primaryReward.reward.currencyCode }} · Precio total</span>
+                </div>
+                <a mat-stroked-button routerLink="/rewards">Ver recompensas</a>
+              }
+            }
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  <section class="workday-section" aria-labelledby="workday-heading">
+    <mat-card class="workday-card">
+      <mat-card-content>
+        <div class="workday-card__heading">
+          <div>
+            <p class="eyebrow">JORNADA ACTUAL</p>
+            @if (workdayLoading()) {
+              <h2 id="workday-heading">Cargando jornada…</h2>
+            } @else if (workday(); as currentWorkday) {
+              <h2 id="workday-heading">{{ workdayStatusLabel(currentWorkday.status) }}</h2>
+            } @else if (workdayMissing()) {
+              <h2 id="workday-heading">No hay jornada para hoy</h2>
+            } @else {
+              <h2 id="workday-heading">Jornada no disponible</h2>
+            }
+          </div>
+
+          @if (workday(); as currentWorkday) {
+            <span class="status" [class.status--active]="currentWorkday.status === 'ACTIVE'" [class.status--break]="currentWorkday.status === 'ON_MEAL_BREAK'">
+              {{ workdayStatusLabel(currentWorkday.status) }}
+            </span>
+          }
+        </div>
+
+        @if (workdayError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (workday(); as currentWorkday) {
+          <div class="schedule">
+            <mat-icon aria-hidden="true">schedule</mat-icon>
+            <div>
+              <span class="schedule__time">{{ currentWorkday.scheduledStart }} – {{ currentWorkday.scheduledEnd }}</span>
+              <span class="schedule__zone">{{ currentWorkday.timeZone }}</span>
+            </div>
+          </div>
+          <p class="workday-card__detail">
+            Tiempo económico registrado: {{ currentWorkday.economicSeconds }} segundos.
+          </p>
+        } @else if (workdayMissing()) {
+          <p class="workday-card__detail">Cuando exista una jornada programada, aparecerá aquí.</p>
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  <section class="summary-grid" aria-label="Resumen de ganancias">
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <p class="eyebrow">HOY</p>
+        @if (todayLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (todayError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (today(); as todaySummary) {
+          @if (isPeriodUnavailable(todaySummary) || !todaySummary.currencyCode) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe evaluable para hoy</span>
+          } @else {
+            <strong>{{ todaySummary.amount | currency:todaySummary.currencyCode:'symbol':'1.2-2' }} {{ todaySummary.currencyCode }}</strong>
+            <span class="summary-card__detail">Total registrado hoy</span>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <p class="eyebrow">SEMANA</p>
+        @if (weekLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (weekError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (week(); as weekSummary) {
+          @if (isPeriodUnavailable(weekSummary) || !weekSummary.currencyCode) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe evaluable para esta semana</span>
+          } @else {
+            <strong>{{ weekSummary.amount | currency:weekSummary.currencyCode:'symbol':'1.2-2' }} {{ weekSummary.currencyCode }}</strong>
+            <span class="summary-card__detail">Resumen semanal</span>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <p class="eyebrow">MES</p>
+        @if (monthLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (monthError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (month(); as monthSummary) {
+          @if (isPeriodUnavailable(monthSummary) || !monthSummary.currencyCode) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe evaluable para este mes</span>
+          } @else {
+            <strong>{{ monthSummary.amount | currency:monthSummary.currencyCode:'symbol':'1.2-2' }} {{ monthSummary.currencyCode }}</strong>
+            <span class="summary-card__detail">Resumen mensual</span>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card summary-card--all-time">
+      <mat-card-content>
+        <p class="eyebrow">ACUMULADO</p>
+        @if (allTimeLoading()) {
+          <span class="summary-card__loading" aria-live="polite">Cargando…</span>
+        } @else if (allTimeError(); as errorMessage) {
+          <p class="card-feedback" role="alert">{{ errorMessage }}</p>
+        } @else if (allTime(); as allTimeSummary) {
+          @if (isPeriodUnavailable(allTimeSummary) || !allTimeSummary.currencyCode) {
+            <strong>No disponible</strong>
+            <span class="summary-card__detail">No hay un importe histórico evaluable</span>
+          } @else {
+            <strong>{{ allTimeSummary.amount | currency:allTimeSummary.currencyCode:'symbol':'1.2-2' }} {{ allTimeSummary.currencyCode }}</strong>
+            <span class="summary-card__detail">Ingresos netos registrados por WorkWorth</span>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+  </section>
+</main>

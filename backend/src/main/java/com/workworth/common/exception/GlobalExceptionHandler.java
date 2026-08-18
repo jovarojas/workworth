@@ -1,0 +1,150 @@
+package com.workworth.common.exception;
+
+import com.workworth.salary.exception.SalaryConfigurationIncompleteException;
+import com.workworth.salary.exception.SalaryProfileConflictException;
+import com.workworth.salary.exception.SalaryProfileNotFoundException;
+import com.workworth.salary.exception.SalaryRateUnavailableException;
+import com.workworth.preferences.exception.ApplicationCurrencyLockedException;
+import com.workworth.rewards.exception.RewardConflictException;
+import com.workworth.rewards.exception.RewardCurrencyMismatchException;
+import com.workworth.rewards.exception.RewardNotFoundException;
+import com.workworth.workday.exception.WorkdayConflictException;
+import com.workworth.workday.exception.WorkdayIntervalValidationException;
+import com.workworth.workday.exception.WorkdayNotFoundException;
+import com.workworth.earnings.exception.EarningNotFoundException;
+import com.workworth.goals.exception.GoalConflictException;
+import com.workworth.goals.exception.GoalCurrencyMismatchException;
+import com.workworth.goals.exception.GoalNotFoundException;
+import com.workworth.goals.exception.GoalProgressUnavailableException;
+import com.workworth.statistics.exception.StatisticsCurrencyMismatchException;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    ProblemDetail handleValidation(MethodArgumentNotValidException exception) {
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        exception.getBindingResult().getFieldErrors()
+            .forEach(error -> fieldErrors.put(error.getField(), error.getDefaultMessage()));
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed.");
+        problem.setTitle("Validation error");
+        problem.setProperty("code", ApiErrorCode.VALIDATION_ERROR.name());
+        problem.setProperty("fieldErrors", fieldErrors);
+        return problem;
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR,
+            "Request parameter has an invalid value.");
+    }
+
+    @ExceptionHandler(SalaryProfileNotFoundException.class)
+    ProblemDetail handleNotFound(SalaryProfileNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(SalaryProfileConflictException.class)
+    ProblemDetail handleConflict(SalaryProfileConflictException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.SALARY_PROFILE_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(SalaryRateUnavailableException.class)
+    ProblemDetail handleUnavailableRate(SalaryRateUnavailableException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.SALARY_RATE_UNAVAILABLE, exception.getMessage());
+    }
+
+    @ExceptionHandler(SalaryConfigurationIncompleteException.class)
+    ProblemDetail handleIncompleteConfiguration(SalaryConfigurationIncompleteException exception) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.SALARY_CONFIGURATION_INCOMPLETE,
+            exception.getMessage());
+    }
+
+    @ExceptionHandler(ApplicationCurrencyLockedException.class)
+    ProblemDetail handleApplicationCurrencyLocked(ApplicationCurrencyLockedException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.APPLICATION_CURRENCY_LOCKED, exception.getMessage());
+    }
+
+    @ExceptionHandler(RewardNotFoundException.class)
+    ProblemDetail handleRewardNotFound(RewardNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(RewardConflictException.class)
+    ProblemDetail handleRewardConflict(RewardConflictException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.REWARD_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(RewardCurrencyMismatchException.class)
+    ProblemDetail handleRewardCurrencyMismatch(RewardCurrencyMismatchException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.REWARD_CURRENCY_MISMATCH, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalNotFoundException.class)
+    ProblemDetail handleGoalNotFound(GoalNotFoundException exception) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalConflictException.class)
+    ProblemDetail handleGoalConflict(GoalConflictException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_CONFLICT, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalProgressUnavailableException.class)
+    ProblemDetail handleGoalProgressUnavailable(GoalProgressUnavailableException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_PROGRESS_UNAVAILABLE, exception.getMessage());
+    }
+
+    @ExceptionHandler(GoalCurrencyMismatchException.class)
+    ProblemDetail handleGoalCurrencyMismatch(GoalCurrencyMismatchException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.GOAL_CURRENCY_MISMATCH, exception.getMessage());
+    }
+
+    @ExceptionHandler(StatisticsCurrencyMismatchException.class)
+    ProblemDetail handleStatisticsCurrencyMismatch(StatisticsCurrencyMismatchException exception) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.STATISTICS_CURRENCY_MISMATCH, exception.getMessage());
+    }
+
+    @ExceptionHandler(WorkdayNotFoundException.class)
+    ProblemDetail handleWorkdayNotFound(WorkdayNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(WorkdayConflictException.class)
+    ProblemDetail handleWorkdayConflict(WorkdayConflictException e) {
+        return problem(HttpStatus.CONFLICT, ApiErrorCode.WORKDAY_CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(WorkdayIntervalValidationException.class)
+    ProblemDetail handleWorkdayInterval(WorkdayIntervalValidationException e) {
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCode.WORKDAY_INTERVAL_INVALID, e.getMessage());
+    }
+
+    @ExceptionHandler(EarningNotFoundException.class)
+    ProblemDetail handleEarningNotFound(EarningNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    ProblemDetail handleIllegalArgument(IllegalArgumentException e) {
+        return problem(HttpStatus.BAD_REQUEST, ApiErrorCode.VALIDATION_ERROR, e.getMessage());
+    }
+
+    private ProblemDetail problem(HttpStatus status, ApiErrorCode code, String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setTitle(status.getReasonPhrase());
+        problem.setProperty("code", code.name());
+        return problem;
+    }
+}

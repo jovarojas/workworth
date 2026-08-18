@@ -1,0 +1,170 @@
+:host {
+  display: block;
+}
+
+.salary-page {
+  width: min(100% - 2rem, 920px);
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4.5rem) 0;
+}
+
+.salary-page__header {
+  margin-bottom: 2rem;
+
+  h1 {
+    margin: .25rem 0 .5rem;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    letter-spacing: -.05em;
+  }
+
+  p:last-child {
+    max-width: 38rem;
+    margin: 0;
+    color: #56627a;
+  }
+}
+
+.eyebrow {
+  margin: 0;
+  color: #56627a;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+}
+
+.salary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.salary-grid--setup {
+  grid-template-columns: minmax(0, 38rem);
+}
+
+.profile-card,
+.rate-card,
+.setup-card,
+.estimator mat-card {
+  border: 1px solid #e1e5ee;
+  border-radius: 1rem;
+  box-shadow: none;
+}
+
+.profile-card h2,
+.rate-card h2,
+.setup-card h2,
+.estimator h2 {
+  margin: .3rem 0 1.5rem;
+  color: #172033;
+}
+
+.rate-card h2 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: -.04em;
+}
+
+.profile-data {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0;
+
+  div {
+    display: grid;
+    gap: .25rem;
+  }
+
+  dt {
+    color: #697586;
+    font-size: .8rem;
+  }
+
+  dd {
+    margin: 0;
+    color: #172033;
+    font-weight: 700;
+  }
+}
+
+.profile-data--compact {
+  margin-top: 1.5rem;
+}
+
+.rate-card__detail,
+.setup-card__intro {
+  color: #56627a;
+}
+
+.setup-card__intro {
+  margin: -1rem 0 1.5rem;
+}
+
+form {
+  display: grid;
+  gap: .5rem;
+}
+
+mat-form-field {
+  width: 100%;
+}
+
+.field-error {
+  margin: -.85rem 0 .5rem;
+  color: #b42318;
+  font-size: .75rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-height: 8rem;
+  color: #56627a;
+}
+
+.loading--compact {
+  min-height: 4rem;
+}
+
+.feedback {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  margin: 1rem 0;
+
+  p {
+    margin: 0;
+  }
+}
+
+.feedback--error {
+  color: #b42318;
+}
+
+.estimator {
+  margin-top: 1rem;
+
+  h2 {
+    margin-bottom: .5rem;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+    color: #56627a;
+  }
+}
+
+@media (max-width: 620px) {
+  .salary-grid,
+  .profile-data,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}

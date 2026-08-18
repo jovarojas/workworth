@@ -1,0 +1,188 @@
+<main class="workday-live">
+  <header class="workday-live__header">
+    <p class="eyebrow">JORNADA</p>
+    <h1>Tu jornada en vivo</h1>
+    <p class="subtitle">El estado y el tiempo se actualizan directamente desde WorkWorth.</p>
+  </header>
+
+  @if (loading()) {
+    <section class="feedback" aria-live="polite">
+      <mat-spinner diameter="36" />
+      <p>Cargando la jornada actual…</p>
+    </section>
+  } @else if (error() && !workday()) {
+    <section class="feedback feedback--error" role="alert">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>{{ error() }}</p>
+    </section>
+  } @else if (missing()) {
+    <section class="feedback" aria-live="polite">
+      <mat-icon aria-hidden="true">event_busy</mat-icon>
+      <h2>No hay jornada para hoy</h2>
+      <p>WorkWorth no tiene una jornada estándar disponible para esta fecha.</p>
+    </section>
+  } @else if (workday(); as currentWorkday) {
+    @if (error(); as errorMessage) {
+      <p class="workday-refresh-error" role="alert">{{ errorMessage }}</p>
+    }
+
+    <section class="status-panel" [class.status-panel--active]="currentWorkday.status === 'ACTIVE'" [class.status-panel--break]="currentWorkday.status === 'ON_MEAL_BREAK'" aria-labelledby="workday-status">
+      <p class="eyebrow">ESTADO ACTUAL</p>
+      <h2 id="workday-status">{{ statusLabel(currentWorkday.status) }}</h2>
+      <p class="status-panel__detail">
+        @switch (currentWorkday.status) {
+          @case ('SCHEDULED') { La jornada todavía no ha comenzado. }
+          @case ('ACTIVE') { La jornada se encuentra dentro de su horario programado. }
+          @case ('ON_MEAL_BREAK') { La jornada está en pausa. }
+          @case ('COMPLETED') { La jornada ha alcanzado su fin programado. }
+          @case ('CANCELLED') { La jornada se marcó como no trabajada. }
+        }
+      </p>
+      <span class="status-panel__code">{{ statusLabel(currentWorkday.status) }}</span>
+    </section>
+
+    <section class="details-grid" aria-label="Detalles de la jornada">
+      <mat-card class="detail-card">
+        <mat-card-content>
+          <mat-icon aria-hidden="true">schedule</mat-icon>
+          <p class="eyebrow">HORARIO PROGRAMADO</p>
+          <strong>{{ currentWorkday.scheduledStart }} – {{ currentWorkday.scheduledEnd }}</strong>
+          <span>{{ currentWorkday.timeZone }}</span>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="detail-card">
+        <mat-card-content>
+          <mat-icon aria-hidden="true">timelapse</mat-icon>
+          <p class="eyebrow">TIEMPO ECONÓMICO</p>
+          <strong>{{ currentWorkday.economicSeconds }} segundos</strong>
+          <span>Máximo programado: {{ currentWorkday.maximumEconomicSeconds }} segundos</span>
+        </mat-card-content>
+      </mat-card>
+    </section>
+
+    <section class="workday-actions" aria-label="Acciones de jornada">
+      <div>
+        <p class="eyebrow">ACCIONES</p>
+        <h2>Gestiona la jornada actual</h2>
+      </div>
+
+      @if (actionError(); as actionErrorMessage) {
+        <p class="workday-actions__error" role="alert">{{ actionErrorMessage }}</p>
+      }
+
+      <div class="workday-actions__buttons">
+        @if (currentWorkday.status === 'ACTIVE') {
+          <button
+            mat-flat-button
+            type="button"
+            color="primary"
+            data-testid="start-meal-break"
+            [disabled]="actionInProgress() !== null"
+            (click)="startMealBreak(currentWorkday)">
+            <mat-icon aria-hidden="true">restaurant</mat-icon>
+            Iniciar pausa
+          </button>
+        }
+
+        @if (currentWorkday.status === 'ON_MEAL_BREAK' && openMealBreak(); as mealBreak) {
+          <button
+            mat-flat-button
+            type="button"
+            color="primary"
+            data-testid="end-meal-break"
+            [disabled]="actionInProgress() !== null"
+            (click)="endMealBreak(currentWorkday, mealBreak)">
+            <mat-icon aria-hidden="true">play_arrow</mat-icon>
+            Finalizar pausa
+          </button>
+        }
+
+        @if (currentWorkday.status === 'SCHEDULED' || currentWorkday.status === 'ACTIVE' || currentWorkday.status === 'ON_MEAL_BREAK' || currentWorkday.status === 'COMPLETED') {
+          <button
+            mat-stroked-button
+            type="button"
+            color="warn"
+            data-testid="cancel-workday"
+            [disabled]="actionInProgress() !== null"
+            (click)="cancelWorkday(currentWorkday)">
+            <mat-icon aria-hidden="true">event_busy</mat-icon>
+            Hoy no trabajo
+          </button>
+        }
+
+        @if (canCreatePartialAbsence()) {
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="show-partial-absence-form"
+            [disabled]="actionInProgress() !== null"
+            (click)="showAbsenceForm()">
+            Registrar ausencia parcial
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (canCreatePartialAbsence() && absenceFormVisible()) {
+      <form
+        class="workday-absence-form"
+        [formGroup]="absenceForm"
+        (ngSubmit)="createPartialAbsence(currentWorkday)"
+        novalidate>
+        <div>
+          <h2>Registrar ausencia parcial</h2>
+          <p>Indica el intervalo de ausencia en la zona horaria {{ currentWorkday.timeZone }}.</p>
+        </div>
+
+        <div class="workday-absence-form__fields">
+          <mat-form-field appearance="outline">
+            <mat-label>Inicio</mat-label>
+            <input matInput type="time" formControlName="startedAt" required />
+            @if (absenceControlError('startedAt'); as errorMessage) {
+              <mat-error>{{ errorMessage }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Fin</mat-label>
+            <input matInput type="time" formControlName="endedAt" required />
+            @if (absenceControlError('endedAt'); as errorMessage) {
+              <mat-error>{{ errorMessage }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="workday-absence-form__reason">
+            <mat-label>Motivo (opcional)</mat-label>
+            <input matInput type="text" formControlName="reason" maxlength="500" />
+            @if (absenceControlError('reason'); as errorMessage) {
+              <mat-error>{{ errorMessage }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        @if (absenceFormError(); as errorMessage) {
+          <p class="workday-action-error" role="alert">{{ errorMessage }}</p>
+        }
+
+        <div class="workday-absence-form__actions">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            data-testid="submit-partial-absence"
+            [disabled]="actionInProgress() !== null">
+            Guardar ausencia
+          </button>
+          <button
+            mat-button
+            type="button"
+            [disabled]="actionInProgress() !== null"
+            (click)="hideAbsenceForm()">
+            Cancelar
+          </button>
+        </div>
+      </form>
+    }
+  }
+</main>

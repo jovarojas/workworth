@@ -1,0 +1,51 @@
+<main class="currency-settings">
+  <header class="currency-settings__header">
+    <p class="eyebrow">PREFERENCIAS</p>
+    <h1>Moneda global</h1>
+    <p>La misma moneda se utiliza en las ganancias, el salario y las recompensas de WorkWorth.</p>
+  </header>
+
+  @if (loading()) {
+    <section class="loading" aria-live="polite">
+      <mat-spinner diameter="32" />
+      <span>Cargando moneda global…</span>
+    </section>
+  } @else if (error(); as errorMessage) {
+    <section class="feedback feedback--error" role="alert">
+      <mat-icon aria-hidden="true">cloud_off</mat-icon>
+      <p>{{ errorMessage }}</p>
+      <button mat-stroked-button type="button" (click)="load()">Reintentar</button>
+    </section>
+  } @else if (settings(); as currentSettings) {
+    <mat-card class="currency-settings__card">
+      <mat-card-content>
+        <p class="eyebrow">MONEDA VIGENTE</p>
+        <h2>{{ currentSettings.currencyCode }}</h2>
+
+        @if (currentSettings.changeAllowed) {
+          <p>Podrás cambiarla mientras WorkWorth no tenga datos económicos registrados.</p>
+          <mat-form-field appearance="outline">
+            <mat-label>Moneda</mat-label>
+            <mat-select [formControl]="currency" aria-label="Moneda global de WorkWorth">
+              <mat-option value="EUR">EUR — Euro</mat-option>
+              <mat-option value="USD">USD — Dólar estadounidense</mat-option>
+            </mat-select>
+          </mat-form-field>
+          @if (saveError(); as errorMessage) {
+            <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p>
+          }
+          @if (saved()) {
+            <p class="feedback feedback--success" aria-live="polite">Moneda global actualizada.</p>
+          }
+          <button mat-flat-button type="button" [disabled]="saving()" (click)="save()">
+            @if (saving()) { Guardando… } @else { Guardar moneda }
+          </button>
+        } @else {
+          <p class="currency-settings__locked" role="status">
+            La moneda está bloqueada porque ya existen datos económicos registrados en WorkWorth.
+          </p>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</main>

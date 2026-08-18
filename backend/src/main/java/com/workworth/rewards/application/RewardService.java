@@ -1,0 +1,99 @@
+package com.workworth.rewards.application;
+
+import com.workworth.preferences.application.ApplicationCurrencyProvider;
+import com.workworth.preferences.application.ApplicationCurrencyService;
+import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.rewards.api.dto.CreateRewardRequest;
+import com.workworth.rewards.api.dto.UpdateRewardRequest;
+import com.workworth.rewards.domain.RewardStatus;
+import com.workworth.rewards.exception.RewardConflictException;
+import com.workworth.rewards.exception.RewardNotFoundException;
+import com.workworth.rewards.persistence.Reward;
+import com.workworth.rewards.persistence.RewardRepository;
+
+import java.time.Clock;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@Transactional(readOnly = true)
+public class RewardService {
+
+    private final RewardRepository rewards;
+    private final ApplicationCurrencyProvider currency;
+    private final ApplicationCurrencyService currencyService;
+    private final Clock clock;
+    private final CurrentUserProvider currentUser;
+
+    public RewardService(RewardRepository rewards, ApplicationCurrencyProvider currency,
+                         ApplicationCurrencyService currencyService, Clock clock,
+                         CurrentUserProvider currentUser) {
+        this.rewards = rewards;
+        this.currency = currency;
+        this.currencyService = currencyService;
+        this.clock = clock;
+        this.currentUser = currentUser;
+    }
+
+    @Transactional
+    public Reward create(CreateRewardRequest request) {
+        Reward reward = new Reward(currentUser.currentUser(), request.name(), request.quantity() == null ? 1 : request.quantity(), request.price(),
+            currency.currentCurrency().name(), clock.instant());
+        Reward saved = rewards.save(reward);
+        currencyService.lockCurrencyAfterEconomicData();
+        return saved;
+    }
+
+    public List<Reward> list(RewardStatus status) {
+        return status == null ? rewards.findAllByUserIdOrderByIdAsc(currentUser.currentUser().getId())
+            : rewards.findAllByUserIdAndStatusOrderByIdAsc(currentUser.currentUser().getId(), status);
+    }
+
+    public Reward get(Long id) {
+        return rewards.findByIdAndUserId(id, currentUser.currentUser().getId()).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
+    }
+
+    @Transactional
+    public Reward update(Long id, UpdateRewardRequest request) {
+        Reward reward = get(id);
+        requirePending(reward, "Only pending rewards can be edited.");
+        reward.update(request.name(), request.quantity(), request.price(), clock.instant());
+        return reward;
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        rewards.delete(get(id));
+    }
+
+    @Transactional
+    public Reward acquire(Long id) {
+        Reward reward = getForUpdate(id);
+        reward.acquire(clock.instant());
+        return reward;
+    }
+
+    Reward pending(Long id) {
+        Reward reward = get(id);
+        requirePending(reward, "Only pending rewards can be evaluated.");
+        return reward;
+    }
+
+    Reward pendingForUpdate(Long id) {
+        Reward reward = getForUpdate(id);
+        requirePending(reward, "Only pending rewards can be evaluated.");
+        return reward;
+    }
+
+    private Reward getForUpdate(Long id) {
+        return rewards.findByIdAndUserIdForUpdate(id, currentUser.currentUser().getId()).orElseThrow(() -> new RewardNotFoundException("Reward not found."));
+    }
+
+    private void requirePending(Reward reward, String message) {
+        if (reward.getStatus() != RewardStatus.PENDING) {
+            throw new RewardConflictException(message);
+        }
+    }
+}
