@@ -6,6 +6,9 @@ const config: CapacitorConfig = {
   webDir: 'dist/frontend/browser',
   server: {
     androidScheme: 'https'
+  },
+  android: {
+    allowMixedContent: process.env.WORKWORTH_ANDROID_ALLOW_MIXED_CONTENT === 'true'
   }
 };
 

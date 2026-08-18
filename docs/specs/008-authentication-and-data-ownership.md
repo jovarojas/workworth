@@ -6,7 +6,7 @@
 
 ## Objective
 
-Protect every WorkWorth resource with an authenticated identity and make domain data private to its owner. The first production release is intentionally private: only a pre-authorized account may access the application. The backend must nevertheless support multiple users from its first authenticated release, so one user can never read or change another user's data.
+Protect every WorkWorth resource with an authenticated identity and make domain data private to its owner. The first production release is intentionally private: Auth0 controls which identities can authenticate for WorkWorth. The backend supports multiple users from its first authenticated release, so one user can never read or change another user's data.
 
 ## Context
 
@@ -24,7 +24,7 @@ Auth0 is the external identity provider. It owns credentials, email verification
 - OpenID Connect and OAuth 2.0 Authorization Code flow with PKCE.
 - Spring Boot as an OAuth 2.0 Resource Server validating access-token JWTs.
 - A local `app_users` domain identity mapped one-to-one to the Auth0 `sub` claim.
-- Private initial access through pre-provisioned, active local users; public registration is disabled.
+- Private initial access controlled by Auth0; public registration is disabled.
 - User ownership and repository/service scoping for persisted WorkWorth data.
 - Authentication and authorization behavior for web Angular and Android Capacitor clients.
 - Bearer-token session expiry, refresh, logout, CORS, and production configuration rules.
@@ -43,11 +43,11 @@ Auth0 is the external identity provider. It owns credentials, email verification
 - [ ] All functional `/api/v1/**` endpoints require a valid access token, except explicitly public operational endpoints such as health checks.
 - [ ] WorkWorth accepts only JWT access tokens issued by the configured Auth0 issuer and intended for the configured WorkWorth API audience.
 - [ ] The backend validates token signature, issuer, audience, expiration, and standard temporal claims before authorizing a request.
-- [ ] The authenticated Auth0 `sub` resolves to exactly one active local `AppUser`; a token for an unmapped or disabled user is not authorized.
+- [ ] The authenticated Auth0 `sub` resolves to exactly one active local `AppUser`; a valid identity with the verified-email claim is provisioned on first API access, while a disabled user is not authorized.
 - [ ] The client never supplies a `userId` that determines ownership. The backend derives the current user only from the validated authenticated token.
 - [ ] Every read, write, mutation, aggregation, and automatic reconciliation is scoped to the current local user.
 - [ ] An authenticated user cannot discover, read, mutate, aggregate, or influence data owned by another user, including through IDs, dates, filters, dashboard requests, statistics, or derived data.
-- [ ] The initial release authorizes only one pre-provisioned account. Auth0 authentication alone does not grant WorkWorth API access.
+- [ ] The initial release accepts only identities that Auth0 authorizes for WorkWorth. The backend provisions their local `AppUser` records from validated token claims and never from client-supplied ownership data.
 - [ ] Angular web and Android Capacitor use Authorization Code with PKCE through Auth0 Universal Login; neither client contains an Auth0 client secret.
 - [ ] Logout clears locally held session material and ends the Auth0 browser session when the provider logout flow is available.
 - [ ] Currency, time zone, and all other application settings are resolved per authenticated local user.
@@ -66,7 +66,7 @@ Auth0 is the external identity provider. It owns credentials, email verification
 | `status` | `ACTIVE` or `DISABLED`; only `ACTIVE` users are authorized. |
 | `createdAt` / `disabledAt` | Audit timestamps for the local authorization record. |
 
-An `AppUser` is provisioned before it receives API access. In the initial release, provisioning is an out-of-band operational action after the account has been created and verified in Auth0. There is no public registration or application endpoint that creates an authorized user.
+An `AppUser` is provisioned on the first protected API request for an Auth0-authenticated identity that includes the configured verified-email token claim. The local record is created from the validated JWT `sub` and that claim, never from an API request body or client-owned storage. There is no WorkWorth registration endpoint.
 
 ### Ownership roots
 
@@ -105,23 +105,23 @@ Dashboard motivation, Earnings periods, and Statistics do not own records. They 
 
 Spring Boot is an OAuth 2.0 Resource Server. For every protected request it validates the bearer JWT against Auth0's published signing keys and configured issuer and audience. It validates signature, issuer, audience, expiration, not-before time when present, and accepted token type before extracting `sub`.
 
-The backend resolves `sub` to an active `AppUser` and creates the request's current-user context. It does not trust `userId`, email, ownership flags, or roles supplied in request bodies, query parameters, path values, or browser storage.
+The backend resolves `sub` to an active `AppUser`, provisioning it when absent and when the configured verified-email claim is present, and creates the request's current-user context. It does not trust `userId`, email, ownership flags, or roles supplied in request bodies, query parameters, path values, or browser storage.
 
 ### HTTP outcomes
 
 | Situation | HTTP outcome |
 |---|---|
 | Missing, malformed, expired, wrongly signed, wrong-issuer, or wrong-audience access token | `401 Unauthorized` with the established `ProblemDetail` format where applicable. |
-| Valid token whose `sub` has no active authorized `AppUser`, or an attempted cross-user access | `403 Forbidden` without revealing whether another user's record exists. |
+| Valid token for a disabled user, without the required verified-email claim, or an attempted cross-user access | `403 Forbidden` without revealing whether another user's record exists. |
 | Valid authorized user requesting a resource absent from their own scope | Existing not-found behavior, normally `404`, without cross-user disclosure. |
 
 Authentication and authorization are enforced before a controller invokes application business operations. CORS is a browser-origin policy only; it is never an authorization mechanism.
 
 ### Private initial access
 
-Auth0's database connection accepts the configured email-and-password login only for accounts provisioned by the operator and verified by Auth0. Public sign-up is disabled. WorkWorth additionally requires a matching active `AppUser`, so creating or possessing another valid Auth0 account cannot grant API access.
+Auth0 controls private access through its enabled connections, application assignment, and any tenant-level allowlist policy. Public sign-up is disabled. WorkWorth provisions an `AppUser` only after Auth0 has issued a valid access token containing the configured verified-email claim; the API itself does not maintain a client-configurable allowlist.
 
-Future invitation or self-registration flows require a separate approved specification. They must not weaken subject-to-local-user mapping or user-data isolation.
+Future invitation or self-registration flows require a separate approved specification. They must not weaken Auth0-controlled access, subject-to-local-user mapping, or user-data isolation.
 
 ## Session lifecycle and logout
 
@@ -170,20 +170,20 @@ The implementation must not put tokens in URLs, logs, analytics payloads, Capaci
 | Validate access tokens and derive the current `AppUser` | Initiate the approved Auth0 login/logout flows and keep UI authentication state. |
 | Enforce ownership at every repository/service boundary | Send only the bearer token supplied by the authentication layer; never send a user ID to select data. |
 | Return `401`, `403`, and owner-scoped resource results | Guard routes, attach the token to WorkWorth API requests, and present access/session errors. |
-| Maintain local allowlist and user-status enforcement | Use secure platform-appropriate token storage; clear it on logout. |
+| Provision local users from validated claims and enforce user status | Use secure platform-appropriate token storage; clear it on logout. |
 | Keep business and economic rules unchanged and user-scoped | Never infer authorization, ownership, currency, or economic decisions locally. |
 
 ## Use cases
 
 ### Authorized owner opens WorkWorth
 
-**Given** a verified Auth0 account whose `sub` is mapped to an active `AppUser`
+**Given** an Auth0-authorized verified account whose access token carries the configured email claim
 **When** the user logs in through Universal Login and calls a protected endpoint
-**Then** Spring validates the JWT, resolves the local user, and returns only that user's data.
+**Then** Spring validates the JWT, resolves or provisions the local user, and returns only that user's data.
 
-### Unknown identity attempts access
+### Identity without the required claim attempts access
 
-**Given** a valid Auth0 account without an active local `AppUser` mapping
+**Given** a valid Auth0 token that does not carry the configured verified-email claim
 **When** it calls a protected WorkWorth endpoint
 **Then** the API returns `403` and exposes no WorkWorth data.
 
@@ -208,8 +208,8 @@ The implementation must not put tokens in URLs, logs, analytics payloads, Capaci
 - [ ] Each owned aggregate root has one local owner; dependent records inherit ownership from their approved aggregate path.
 - [ ] A user cannot access or mutate another user's Salary, Preferences, Workdays, Earnings, Rewards, Goals, Dashboard motivation, or Statistics.
 - [ ] Workday local-date uniqueness is per user, and current global application settings are per user.
-- [ ] The initial production database is empty and only the explicitly pre-provisioned active user can access it.
-- [ ] Valid but unmapped/disabled identities receive `403`; invalid or absent access tokens receive `401`.
+- [ ] The initial production database is empty and each Auth0-authorized identity is provisioned with an isolated active local user on first access.
+- [ ] Disabled identities or valid tokens without the required verified-email claim receive `403`; invalid or absent access tokens receive `401`.
 - [ ] Angular and Capacitor never calculate authorization or select data ownership; they send only a bearer token and present outcomes.
 - [ ] Refresh material is never stored in web local storage, URLs, logs, or Android insecure storage.
 - [ ] Production uses HTTPS, exact CORS origins, and exact Auth0 callback/logout allowlists; CORS is not treated as authentication.
@@ -227,7 +227,7 @@ The implementation must not put tokens in URLs, logs, analytics payloads, Capaci
 
 ## Edge cases
 
-- A valid token may identify a disabled or no-longer-allowlisted local user: return `403` without exposing data.
+- A valid token may identify a disabled local user or omit the required verified-email claim: return `403` without exposing data.
 - A request that arrives as an access token expires returns `401`; the client may renew or require login, but it must not submit a stale mutation again automatically without preserving user intent safely.
 - Two users can have workdays on the same local date; only same-user duplicates are forbidden.
 - A user changing global currency remains subject to the existing per-user economic-data lock; another user's economic records do not block the change.
@@ -240,7 +240,7 @@ The implementation must not put tokens in URLs, logs, analytics payloads, Capaci
 | Requirement / rule | Test level | Expected test |
 |---|---|---|
 | JWT validation | Backend security integration | Invalid signature, issuer, audience, expiry, and missing token return `401`. |
-| Local authorization | Backend integration | Valid mapped active subject is authorized; valid unmapped or disabled subject returns `403`. |
+| Local authorization | Backend integration | Existing active subject is authorized; a valid identity with the verified-email claim is provisioned; disabled users or tokens without that claim return `403`. |
 | Root ownership | Backend integration / PostgreSQL | Two users see and mutate only their own Salary, settings, Workdays, Rewards, and Goals. |
 | Dependent ownership | Backend integration | Earnings, corrections, breaks, absences, and estimates cannot be reached through another user's aggregate IDs. |
 | Owner-scoped derived data | Backend integration | Earnings periods, Dashboard motivation, Statistics, Rewards relevance, and combinations contain only the current user's data. |
@@ -254,4 +254,4 @@ The implementation must not put tokens in URLs, logs, analytics payloads, Capaci
 
 This specification is **Approved**. It authorizes a technical implementation proposal, not direct implementation. Before implementation, that proposal must define exact Auth0 tenant/application settings, Spring Security classes, migrations, owner-scoped repository changes, token test fixtures, Angular SDK integration, Android secure-storage dependency, redirect URIs, and rollout order.
 
-The documented product decisions are: private initial access, one authorized pre-provisioned account, email-and-password login with verified email, empty production data, and multi-user backend ownership from the first authenticated release.
+The documented product decisions are: private Auth0-controlled access, verified email, empty production data, just-in-time local user provisioning from validated token claims, and multi-user backend ownership from the first authenticated release.

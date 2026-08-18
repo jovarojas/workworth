@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const [target, environment] = process.argv.slice(2);
 const apiBaseUrl = process.env.WORKWORTH_API_BASE_URL;
@@ -34,6 +35,15 @@ if (environment === 'development' && !['http:', 'https:'].includes(parsedApiBase
   throw new Error('La API de desarrollo debe usar HTTP o HTTPS.');
 }
 
+const androidDevelopmentCleartextApi = target === 'android'
+  && environment === 'development'
+  && parsedApiBaseUrl.protocol === 'http:';
+
+if (androidDevelopmentCleartextApi
+  && ['10.0.2.2', '127.0.0.1', 'localhost'].includes(parsedApiBaseUrl.hostname)) {
+  throw new Error('La APK de desarrollo para un dispositivo físico requiere la IP LAN del host en WORKWORTH_API_BASE_URL.');
+}
+
 const buildArguments = [
   './node_modules/@angular/cli/bin/ng.js',
   'build',
@@ -56,7 +66,29 @@ const buildArguments = [
 execFileSync(process.execPath, buildArguments, { stdio: 'inherit' });
 
 if (target === 'android') {
+  const auth0ConfigurationPath = new URL('../android/app/build/generated/auth0.properties', import.meta.url);
+  const networkSecurityConfigPath = new URL(
+    '../android/app/build/generated/res/developmentNetworkSecurity/xml/debug_network_security_config.xml',
+    import.meta.url
+  );
+
+  mkdirSync(new URL('.', auth0ConfigurationPath), { recursive: true });
+  writeFileSync(auth0ConfigurationPath, [
+    `auth0Domain=${auth0Domain}`,
+    `auth0Audience=${auth0Audience}`,
+    `auth0ClientId=${auth0AndroidClientId}`
+  ].join('\n'));
+
+  mkdirSync(new URL('.', networkSecurityConfigPath), { recursive: true });
+  writeFileSync(networkSecurityConfigPath, androidDevelopmentCleartextApi
+    ? `<network-security-config>\n    <base-config cleartextTrafficPermitted="false" />\n    <domain-config cleartextTrafficPermitted="true">\n        <domain includeSubdomains="false">${parsedApiBaseUrl.hostname}</domain>\n    </domain-config>\n</network-security-config>\n`
+    : '<network-security-config>\n    <base-config cleartextTrafficPermitted="false" />\n</network-security-config>\n');
+
   execFileSync(process.execPath, ['./node_modules/@capacitor/cli/bin/capacitor', 'sync', 'android'], {
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      WORKWORTH_ANDROID_ALLOW_MIXED_CONTENT: String(androidDevelopmentCleartextApi)
+    }
   });
 }

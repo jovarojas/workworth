@@ -39,7 +39,7 @@ public class WorkWorthNativeAuthPlugin extends Plugin {
         if (!isReady(call)) {
             return;
         }
-        WebAuthProvider.login(account)
+        getBridge().executeOnMainThread(() -> WebAuthProvider.login(account)
             .withScheme(AUTH0_SCHEME)
             .withAudience(BuildConfig.AUTH0_AUDIENCE)
             .withScope("openid profile email offline_access")
@@ -54,7 +54,7 @@ public class WorkWorthNativeAuthPlugin extends Plugin {
                 public void onFailure(@NonNull AuthenticationException error) {
                     call.reject("No se pudo iniciar sesión.", "AUTHENTICATION_FAILED", error);
                 }
-            });
+            }));
     }
 
     @PluginMethod
@@ -89,7 +89,7 @@ public class WorkWorthNativeAuthPlugin extends Plugin {
         if (!isReady(call)) {
             return;
         }
-        WebAuthProvider.logout(account)
+        getBridge().executeOnMainThread(() -> WebAuthProvider.logout(account)
             .withScheme(AUTH0_SCHEME)
             .start(getActivity(), new Callback<Void, AuthenticationException>() {
                 @Override
@@ -103,7 +103,7 @@ public class WorkWorthNativeAuthPlugin extends Plugin {
                     credentials.clearCredentials();
                     call.reject("No se pudo cerrar sesión en el proveedor.", "LOGOUT_FAILED", error);
                 }
-            });
+            }));
     }
 
     private boolean isReady(PluginCall call) {

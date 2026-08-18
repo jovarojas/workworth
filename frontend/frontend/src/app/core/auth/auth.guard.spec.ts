@@ -21,7 +21,7 @@ describe('authenticatedGuard', () => {
     expect(result).toBe(true);
   });
 
-  it('starts login instead of granting a protected route to an unauthenticated user', async () => {
+  it('redirects an unauthenticated user to the access screen while preserving the requested route', async () => {
     const auth = authenticated(false);
     TestBed.configureTestingModule({
       providers: [
@@ -32,7 +32,8 @@ describe('authenticatedGuard', () => {
 
     const result = await TestBed.runInInjectionContext(() => firstValueFrom(authenticatedGuard({} as never, { url: '/goals' } as never) as never));
 
-    expect(auth.login).toHaveBeenCalledWith('/goals');
+    expect(auth.login).not.toHaveBeenCalled();
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/login'], { queryParams: { returnTo: '/goals' } });
     expect(result).toEqual({});
   });
 

@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.workworth.identity.application.CurrentUserProvider;
+import com.workworth.identity.application.AppUserProvisioningService;
+import com.workworth.identity.application.SecurityCurrentUserProvider;
 import com.workworth.identity.domain.AppUserStatus;
 import com.workworth.identity.persistence.AppUser;
 import com.workworth.identity.persistence.AppUserRepository;
@@ -31,10 +33,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(SecurityConfigurationTest.ProtectedController.class)
-@Import({SecurityConfiguration.class, SecurityConfigurationTest.UserAccessConfiguration.class,
+@Import({SecurityConfiguration.class, SecurityCurrentUserProvider.class,
     SecurityConfigurationTest.ProtectedController.class})
 @ActiveProfiles("security-test")
-@TestPropertySource(properties = "workworth.security.enabled=true")
+@TestPropertySource(properties = {
+    "workworth.security.enabled=true",
+    "workworth.identity.email-claim=https://workworth.app/email",
+    "workworth.identity.default-time-zone=Europe/Madrid"
+})
 class SecurityConfigurationTest {
 
     @Autowired
@@ -45,6 +51,9 @@ class SecurityConfigurationTest {
 
     @MockBean
     private AppUserRepository users;
+
+    @MockBean
+    private AppUserProvisioningService provisioning;
 
     @Test
     void rejectsRequestsWithoutAnAccessToken() throws Exception {
@@ -63,19 +72,42 @@ class SecurityConfigurationTest {
     }
 
     @Test
-    void permitsOnlyAnAuthenticatedAllowlistedIdentity() throws Exception {
+    void permitsAnAuthenticatedIdentityWithAnExistingActiveUser() throws Exception {
         AppUser user = new AppUser(UUID.randomUUID(), "auth0|allowed", "allowed@example.test", "Europe/Madrid", Instant.EPOCH);
-        when(users.findByIdentitySubjectAndStatus("auth0|allowed", AppUserStatus.ACTIVE)).thenReturn(Optional.of(user));
+        when(users.findByIdentitySubject("auth0|allowed")).thenReturn(Optional.of(user));
 
         mockMvc.perform(get("/api/v1/security-test").with(jwt().jwt(token -> token.subject("auth0|allowed"))))
             .andExpect(status().isOk());
     }
 
     @Test
-    void rejectsAuthenticatedIdentitiesOutsideTheAllowlist() throws Exception {
-        when(users.findByIdentitySubjectAndStatus("auth0|unknown", AppUserStatus.ACTIVE)).thenReturn(Optional.empty());
+    void provisionsAnAuthenticatedIdentityFromItsVerifiedEmailClaim() throws Exception {
+        AppUser user = new AppUser(UUID.randomUUID(), "google-oauth2|new-user", "new@example.test", "Europe/Madrid", Instant.EPOCH);
+        when(users.findByIdentitySubject("google-oauth2|new-user")).thenReturn(Optional.empty());
+        when(provisioning.provision("google-oauth2|new-user", "new@example.test")).thenReturn(user);
+
+        mockMvc.perform(get("/api/v1/security-test").with(jwt().jwt(token -> token
+                .subject("google-oauth2|new-user")
+                .claim("https://workworth.app/email", "new@example.test"))))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void rejectsAnAuthenticatedIdentityWithoutTheVerifiedEmailClaim() throws Exception {
+        when(users.findByIdentitySubject("auth0|unknown")).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/api/v1/security-test").with(jwt().jwt(token -> token.subject("auth0|unknown"))))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void rejectsDisabledUsers() throws Exception {
+        AppUser user = new AppUser(UUID.randomUUID(), "auth0|disabled", "disabled@example.test", "Europe/Madrid", Instant.EPOCH);
+        org.springframework.test.util.ReflectionTestUtils.setField(user, "status", AppUserStatus.DISABLED);
+        when(users.findByIdentitySubject("auth0|disabled")).thenReturn(Optional.of(user));
+
+        mockMvc.perform(get("/api/v1/security-test").with(jwt().jwt(token -> token.subject("auth0|disabled"))))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
@@ -94,14 +126,4 @@ class SecurityConfigurationTest {
         }
     }
 
-    @TestConfiguration
-    static class UserAccessConfiguration {
-        @Bean
-        @org.springframework.context.annotation.Primary
-        CurrentUserProvider currentUserProvider(AppUserRepository users) {
-            return () -> users.findByIdentitySubjectAndStatus(
-                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName(),
-                AppUserStatus.ACTIVE).orElseThrow(() -> new org.springframework.security.access.AccessDeniedException("Not allowlisted"));
-        }
-    }
 }

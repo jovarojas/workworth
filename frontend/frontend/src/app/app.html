@@ -1,18 +1,59 @@
-<header class="app-nav" aria-label="Navegación principal">
-  <a class="app-nav__brand" routerLink="/" aria-label="WorkWorth: ir al inicio">WORKWORTH</a>
-  <nav class="app-nav__links" aria-label="Secciones principales">
-    <a routerLink="/" routerLinkActive="app-nav__link--active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
-    <a routerLink="/workday" routerLinkActive="app-nav__link--active">Jornada</a>
-    <a routerLink="/earnings" routerLinkActive="app-nav__link--active">Historial</a>
-    <a routerLink="/rewards" routerLinkActive="app-nav__link--active">Recompensas</a>
-    <a routerLink="/goals" routerLinkActive="app-nav__link--active">Objetivos</a>
-    <a routerLink="/statistics" routerLinkActive="app-nav__link--active">Estadísticas</a>
-    <a routerLink="/salary" routerLinkActive="app-nav__link--active">Salario</a>
-    <a routerLink="/preferences/currency" routerLinkActive="app-nav__link--active">Ajustes</a>
+@if (auth.isLoading()) {
+  <main class="app-auth-loading" aria-live="polite">
+    <span>Preparando WorkWorth…</span>
+  </main>
+} @else if (auth.isAuthenticated()) {
+  <mat-sidenav-container class="app-shell">
+  <mat-sidenav #mobileMenu class="app-nav__drawer" mode="over" aria-label="Menú principal">
+    <div class="app-nav__drawer-heading">
+      <span>WORKWORTH</span>
+      <p>Navegación</p>
+    </div>
+    <nav class="app-nav__drawer-links" aria-label="Secciones principales">
+      @for (item of navigation; track item.path) {
+        <a class="app-nav__drawer-link" [routerLink]="item.path" routerLinkActive="app-nav__drawer-link--active"
+          [routerLinkActiveOptions]="{ exact: item.exact ?? false }" (click)="mobileMenu.close()">
+          <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+          {{ item.label }}
+        </a>
+      }
+    </nav>
     @if (auth.configured && auth.isAuthenticated()) {
-      <button type="button" class="app-nav__logout" (click)="auth.logout()">Cerrar sesión</button>
+      <div class="app-nav__drawer-footer">
+        <button mat-icon-button type="button" aria-label="Cerrar sesión" matTooltip="Cerrar sesión"
+          (click)="logout(mobileMenu)">
+          <mat-icon aria-hidden="true">logout</mat-icon>
+        </button>
+      </div>
     }
-  </nav>
-</header>
+  </mat-sidenav>
 
-<router-outlet />
+  <mat-sidenav-content>
+    <header class="app-nav" aria-label="Navegación principal">
+      <button mat-icon-button type="button" class="app-nav__menu-button" aria-label="Abrir menú"
+        matTooltip="Abrir menú" (click)="mobileMenu.open()">
+        <mat-icon aria-hidden="true">menu</mat-icon>
+      </button>
+      <a class="app-nav__brand" routerLink="/" aria-label="WorkWorth: ir al inicio">WORKWORTH</a>
+      <nav class="app-nav__links" aria-label="Secciones principales">
+        @for (item of navigation; track item.path) {
+          <a [routerLink]="item.path" routerLinkActive="app-nav__link--active"
+            [routerLinkActiveOptions]="{ exact: item.exact ?? false }">{{ item.label }}</a>
+        }
+      </nav>
+      @if (auth.configured && auth.isAuthenticated()) {
+        <button mat-icon-button type="button" class="app-nav__logout" aria-label="Cerrar sesión"
+          matTooltip="Cerrar sesión" (click)="logout()">
+          <mat-icon aria-hidden="true">logout</mat-icon>
+        </button>
+      }
+    </header>
+
+    <router-outlet />
+  </mat-sidenav-content>
+  </mat-sidenav-container>
+} @else {
+  <main class="app-login-shell">
+    <router-outlet />
+  </main>
+}

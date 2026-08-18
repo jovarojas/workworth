@@ -1,8 +1,14 @@
 apply plugin: 'com.android.application'
 
-def auth0Domain = System.getenv('WORKWORTH_AUTH0_DOMAIN') ?: ''
-def auth0Audience = System.getenv('WORKWORTH_AUTH0_AUDIENCE') ?: ''
-def auth0ClientId = System.getenv('WORKWORTH_AUTH0_ANDROID_CLIENT_ID') ?: ''
+def auth0Configuration = new Properties()
+def auth0ConfigurationFile = file("$buildDir/generated/auth0.properties")
+if (auth0ConfigurationFile.exists()) {
+    auth0ConfigurationFile.withInputStream { stream -> auth0Configuration.load(stream) }
+}
+
+def auth0Domain = System.getenv('WORKWORTH_AUTH0_DOMAIN') ?: auth0Configuration.getProperty('auth0Domain', '')
+def auth0Audience = System.getenv('WORKWORTH_AUTH0_AUDIENCE') ?: auth0Configuration.getProperty('auth0Audience', '')
+def auth0ClientId = System.getenv('WORKWORTH_AUTH0_ANDROID_CLIENT_ID') ?: auth0Configuration.getProperty('auth0ClientId', '')
 
 android {
     namespace = "com.workworth.app"
@@ -34,6 +40,11 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    sourceSets {
+        debug {
+            res.srcDir("$buildDir/generated/res/developmentNetworkSecurity")
         }
     }
 }
