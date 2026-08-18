@@ -21,6 +21,7 @@
     "node": ">=22.14.0 <23"
   },
   "dependencies": {
+    "@angular/animations": "^21.2.20",
     "@angular/cdk": "^21.2.14",
     "@angular/common": "^21.2.0",
     "@angular/compiler": "^21.2.0",
