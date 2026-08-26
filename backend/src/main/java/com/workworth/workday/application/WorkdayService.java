@@ -5,6 +5,7 @@ import com.workworth.workday.exception.*;
 import com.workworth.workday.persistence.*;
 import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.identity.persistence.AppUser;
+import com.workworth.identity.persistence.AppUserRepository;
 
 import java.time.*;
 import java.util.*;
@@ -24,8 +25,9 @@ public class WorkdayService {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final CurrentUserProvider currentUser;
+    private final AppUserRepository users;
 
-    public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, ApplicationEventPublisher events, CurrentUserProvider currentUser) {
+    public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, ApplicationEventPublisher events, CurrentUserProvider currentUser, AppUserRepository users) {
         workdays = w;
         breaks = b;
         absences = a;
@@ -34,6 +36,7 @@ public class WorkdayService {
         this.clock = clock;
         this.events = events;
         this.currentUser = currentUser;
+        this.users = users;
     }
 
     @Transactional
@@ -43,8 +46,43 @@ public class WorkdayService {
 
     @Transactional
     public Workday current() {
-        AppUser user = currentUser.currentUser();
-        return reconcile(user, LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone()))));
+        return reconcileThroughToday(currentUser.currentUser());
+    }
+
+    /**
+     * Reconciles every pending standard workday between the backfill anchor (inclusive) and
+     * today (exclusive), respecting the standard calendar, then reconciles today itself. This
+     * recovers automatic workdays for days the user never opened the app, without depending on
+     * a per-date query or the lifecycle scheduler having run for that date.
+     * <p>
+     * The anchor is the day after the user's last known workday when one exists, so that day
+     * (already reconciled) is never touched again; otherwise it is the user's account creation
+     * date ({@link AppUser#getCreatedAt()}), so a user who signs up and only opens the app days
+     * later still gets every working day since sign-up, never anything earlier. The walk never
+     * goes past today, so no future workday is ever created.
+     * <p>
+     * Reuses the existing per-date {@link #reconcile(AppUser, LocalDate)}, so it keeps the same
+     * idempotency, per-(user, date) locking, and calendar rules.
+     */
+    @Transactional
+    public Workday reconcileThroughToday(AppUser user) {
+        LocalDate today = LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone())));
+        reconcilePending(user, today);
+        return reconcile(user, today);
+    }
+
+    private void reconcilePending(AppUser user, LocalDate throughExclusive) {
+        ZoneId zone = ZoneId.of(user.getTimeZone());
+        LocalDate anchor = workdays.findLatestLocalDate(user.getId())
+            .map(lastKnown -> lastKnown.plusDays(1))
+            .orElseGet(() -> user.getCreatedAt().atZone(zone).toLocalDate());
+        LocalDate date = anchor;
+        while (date.isBefore(throughExclusive)) {
+            if (WorkdaySchedule.forDate(date).isPresent()) {
+                reconcile(user, date);
+            }
+            date = date.plusDays(1);
+        }
     }
 
     @Transactional
@@ -54,11 +92,22 @@ public class WorkdayService {
         if (schedule.isEmpty()) throw new WorkdayNotFoundException("No standard workday exists for this date.");
         workdays.lockUserDate(user.getId(), date);
         Workday day = workdays.findLockedByUserIdAndLocalDate(user.getId(), date).orElseGet(() -> {
+            // user may be a detached instance (e.g. the scheduler or reconcileThroughToday's
+            // multi-date backfill threading one AppUser reference across several dates in this
+            // same transaction). Re-attaching it here before it backs a brand-new Workday avoids
+            // Hibernate ending up with two different managed objects for the same AppUser id in
+            // this session, which later throws NonUniqueObjectException when that same user is
+            // used again (e.g. materializing this workday's Earning locks the currency settings).
+            AppUser managed = attach(user);
             var s = schedule.get();
-            return workdays.save(new Workday(user, date, user.getTimeZone(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));
+            return workdays.save(new Workday(managed, date, managed.getTimeZone(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));
         });
         refresh(day, now);
         return day;
+    }
+
+    private AppUser attach(AppUser user) {
+        return users.findById(user.getId()).orElse(user);
     }
 
     @Transactional

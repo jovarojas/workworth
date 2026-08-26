@@ -160,6 +160,71 @@ class DashboardMotivationServiceTest {
             LocalDate.of(2026, 8, 12), LocalDate.of(2026, 8, 13), null, null, null));
     }
 
+    @Test
+    void selectsTheMostExpensiveAffordableRewardInsteadOfStayingOnTheFirstOneReached() {
+        // Regression test for BUG 2: "cafe" has the lower id (created first, cheaper) and
+        // "escapada" has the higher id (created later, pricier). Both are affordable at
+        // ALL_TIME once enough money has been earned. The old id-based tie-break stayed on
+        // "cafe" forever; the primary reward must advance to "escapada" instead.
+        Reward cafe = reward(10L, "Cafe", "3.00");
+        Reward escapada = reward(11L, "Escapada", "40.00");
+        when(rewards.list(RewardStatus.PENDING)).thenReturn(List.of(cafe, escapada));
+        stubSummary(EarningPeriod.TODAY, "0.00");
+        stubSummary(EarningPeriod.WEEK, "0.00");
+        stubSummary(EarningPeriod.MONTH, "0.00");
+        stubSummary(EarningPeriod.ALL_TIME, "45.00");
+
+        var motivation = service.motivation();
+
+        assertThat(motivation.state()).isEqualTo(DashboardMotivationState.AVAILABLE);
+        assertThat(motivation.primaryReward().reward()).isSameAs(escapada);
+    }
+
+    @Test
+    void advancesThroughEachRewardAsAvailableMoneyGrowsPastItsPrice() {
+        Reward cafe = reward(20L, "Cafe", "3.00");
+        Reward cine = reward(21L, "Cine", "8.00");
+        Reward cena = reward(22L, "Cena", "15.00");
+        Reward escapada = reward(23L, "Escapada", "40.00");
+        when(rewards.list(RewardStatus.PENDING)).thenReturn(List.of(cafe, cine, cena, escapada));
+        stubSummary(EarningPeriod.TODAY, "0.00");
+        stubSummary(EarningPeriod.WEEK, "0.00");
+        stubSummary(EarningPeriod.MONTH, "0.00");
+
+        stubSummary(EarningPeriod.ALL_TIME, "0.00");
+        var atZero = service.motivation();
+        assertThat(atZero.state()).isEqualTo(DashboardMotivationState.PROGRESS);
+        assertThat(atZero.primaryReward().reward()).isSameAs(cafe);
+
+        stubSummary(EarningPeriod.ALL_TIME, "3.00");
+        assertThat(service.motivation().primaryReward().reward()).isSameAs(cafe);
+
+        stubSummary(EarningPeriod.ALL_TIME, "10.00");
+        assertThat(service.motivation().primaryReward().reward()).isSameAs(cine);
+
+        stubSummary(EarningPeriod.ALL_TIME, "20.00");
+        assertThat(service.motivation().primaryReward().reward()).isSameAs(cena);
+
+        // All rewards are now affordable: the most expensive one is shown as the final goal.
+        stubSummary(EarningPeriod.ALL_TIME, "100.00");
+        assertThat(service.motivation().primaryReward().reward()).isSameAs(escapada);
+    }
+
+    @Test
+    void tiesOnPriceKeepTheLowestRewardIdAsTheFinalTieBreak() {
+        Reward lowerId = reward(29L, "A", "20.00");
+        Reward higherId = reward(30L, "B", "20.00");
+        when(rewards.list(RewardStatus.PENDING)).thenReturn(List.of(lowerId, higherId));
+        stubSummary(EarningPeriod.TODAY, "0.00");
+        stubSummary(EarningPeriod.WEEK, "0.00");
+        stubSummary(EarningPeriod.MONTH, "0.00");
+        stubSummary(EarningPeriod.ALL_TIME, "20.00");
+
+        var motivation = service.motivation();
+
+        assertThat(motivation.primaryReward().reward()).isSameAs(lowerId);
+    }
+
     private Reward reward(Long id, String name, String price) {
         Reward reward = new Reward(TestUsers.user("test|dashboard-motivation"), name, 1,
             new BigDecimal(price), "EUR", Instant.EPOCH);

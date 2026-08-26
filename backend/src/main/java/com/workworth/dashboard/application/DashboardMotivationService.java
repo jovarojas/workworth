@@ -47,9 +47,14 @@ public class DashboardMotivationService {
                 .map(reward -> evaluations.evaluate(reward, summary))
                 .toList();
 
+            // Among rewards already affordable in this context, prefer the most valuable one so the
+            // motivational primary reward keeps advancing as earned money grows past each threshold,
+            // instead of staying pinned to the first (cheapest, lowest-id) reward ever reached.
+            // Ties on price keep the lowest stable reward id, per SPEC 005.
             var affordable = evaluationsForContext.stream()
                 .filter(evaluation -> evaluation.evaluable() && evaluation.outcome() == RewardOutcome.AFFORDABLE)
-                .findFirst();
+                .max(Comparator.comparing(RewardEvaluation::price)
+                    .thenComparing(Comparator.comparing(RewardEvaluation::rewardId).reversed()));
             if (affordable.isPresent()) {
                 RewardEvaluation evaluation = affordable.get();
                 return new DashboardMotivation(DashboardMotivationState.AVAILABLE,

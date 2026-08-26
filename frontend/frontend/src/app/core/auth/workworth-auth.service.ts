@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@auth0/auth0-angular';
 import { Capacitor } from '@capacitor/core';
@@ -10,9 +10,12 @@ import { NativeAuth } from './native-auth.plugin';
 
 @Injectable({ providedIn: 'root' })
 export class WorkWorthAuthService {
-  private readonly auth0 = inject(AuthService, { optional: true });
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly nativePlatform = Capacitor.isNativePlatform();
+  private readonly auth0 = this.nativePlatform
+    ? null
+    : this.injector.get(AuthService, null);
   private readonly authenticated = signal(false);
   private readonly loading = signal(this.nativePlatform);
   private readonly nativeLoading = new BehaviorSubject(this.nativePlatform);
@@ -77,6 +80,7 @@ export class WorkWorthAuthService {
 
   private restoreNativeSession(): void {
     if (!this.configured) {
+      this.loading.set(false);
       this.nativeLoading.next(false);
       return;
     }

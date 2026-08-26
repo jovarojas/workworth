@@ -68,7 +68,7 @@ These are Dashboard presentation states, not new Reward domain states. SPEC 004 
 The backend evaluates pending rewards using current effective Earnings. It selects one primary reward without involving Angular:
 
 1. Prefer an `AFFORDABLE` reward with the most immediate `relevantContext` under `TODAY → WEEK → MONTH → ALL_TIME`.
-2. If several affordable rewards have the same relevant context, select the one with the lowest stable reward identifier.
+2. If several affordable rewards have the same relevant context, select the one with the **highest price**; if the price also ties, select the lowest stable reward identifier. Preferring the highest price ensures the primary reward keeps advancing to the next, more valuable, already-reached goal as earned money grows, instead of staying pinned to the first (typically cheapest) reward that ever became affordable.
 3. If no reward is affordable, prefer a `SHORTFALL` reward with the most immediate `progressContext` under the same order.
 4. If several progress rewards have the same progress context, select the one with the smallest backend-provided shortfall; ties use the lowest stable reward identifier.
 5. If every pending reward is non-evaluable, return `UNAVAILABLE`.
@@ -197,7 +197,7 @@ The final DTO names and exact nesting are an implementation concern, but the end
 |---|---|---|
 | Empty motivation | Backend unit / integration | No pending rewards returns `EMPTY` with null reward and combination. |
 | Affordable priority | Backend unit | `TODAY`, `WEEK`, `MONTH`, and `ALL_TIME` select the first applicable affordable context. |
-| Affordable tie-break | Backend unit | Same-context affordable rewards select the lowest reward id. |
+| Affordable tie-break | Backend unit | Same-context affordable rewards select the highest price, then the lowest reward id. |
 | Progress priority | Backend unit | No affordable reward selects the first evaluable context; same-context ties use the smallest shortfall. |
 | Unavailable motivation | Backend unit / integration | All pending rewards non-evaluable returns `UNAVAILABLE` without monetary outcome fields. |
 | Combination | Backend unit | Only an `AVAILABLE` result may include a valid two-or-more-item pending combination. |
