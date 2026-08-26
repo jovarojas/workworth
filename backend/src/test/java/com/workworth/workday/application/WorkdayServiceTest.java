@@ -8,6 +8,7 @@ import com.workworth.workday.exception.WorkdayIntervalValidationException;
 import com.workworth.workday.persistence.*;
 import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.identity.persistence.AppUser;
+import com.workworth.identity.persistence.AppUserRepository;
 import java.time.*; import java.util.*;
 import org.junit.jupiter.api.*;
 import org.springframework.context.ApplicationEventPublisher;
@@ -15,12 +16,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.ArgumentCaptor;
 
 class WorkdayServiceTest {
- private WorkdayRepository workdays=mock(WorkdayRepository.class); private MealBreakRepository breaks=mock(MealBreakRepository.class); private PartialAbsenceRepository absences=mock(PartialAbsenceRepository.class); private WorkdayTimeCorrectionRepository corrections=mock(WorkdayTimeCorrectionRepository.class); private final List<MealBreak> breakList=new ArrayList<>(); private final List<PartialAbsence> absenceList=new ArrayList<>();
+ private WorkdayRepository workdays=mock(WorkdayRepository.class); private MealBreakRepository breaks=mock(MealBreakRepository.class); private PartialAbsenceRepository absences=mock(PartialAbsenceRepository.class); private WorkdayTimeCorrectionRepository corrections=mock(WorkdayTimeCorrectionRepository.class); private AppUserRepository users=mock(AppUserRepository.class); private final List<MealBreak> breakList=new ArrayList<>(); private final List<PartialAbsence> absenceList=new ArrayList<>();
  private Clock clock; private WorkdayService service; private ApplicationEventPublisher events=mock(ApplicationEventPublisher.class); private CurrentUserProvider currentUser=mock(CurrentUserProvider.class); private AppUser user;
  // createdAt is pinned to "today" (same local date as the fixed clock) so this shared fixture
  // represents a user with no back-fill history to reconcile; tests that need an older sign-up
  // date build their own AppUser instead of reusing this one.
- @BeforeEach void init(){clock=Clock.fixed(Instant.parse("2026-07-06T08:00:00Z"),ZoneId.of("Europe/Madrid")); user=new AppUser(UUID.randomUUID(),"test|workday","workday@test.invalid","Europe/Madrid",Instant.parse("2026-07-06T05:00:00Z"));when(currentUser.currentUser()).thenReturn(user); service=new WorkdayService(workdays,breaks,absences,corrections,new EconomicTimeCalculator(),clock,events,currentUser); when(breaks.findByWorkdayIdOrderByStartedAt(any())).thenAnswer(x->breakList); when(absences.findByWorkdayIdOrderByStartedAt(any())).thenAnswer(x->absenceList); when(breaks.save(any())).thenAnswer(x->{MealBreak b=x.getArgument(0);breakList.add(b);return b;}); when(absences.save(any())).thenAnswer(x->{PartialAbsence a=x.getArgument(0);absenceList.add(a);return a;}); when(corrections.save(any())).thenAnswer(x->{WorkdayTimeCorrection correction=x.getArgument(0);ReflectionTestUtils.setField(correction,"id",99L);return correction;}); }
+ @BeforeEach void init(){clock=Clock.fixed(Instant.parse("2026-07-06T08:00:00Z"),ZoneId.of("Europe/Madrid")); user=new AppUser(UUID.randomUUID(),"test|workday","workday@test.invalid","Europe/Madrid",Instant.parse("2026-07-06T05:00:00Z"));when(currentUser.currentUser()).thenReturn(user); service=new WorkdayService(workdays,breaks,absences,corrections,new EconomicTimeCalculator(),clock,events,currentUser,users); when(breaks.findByWorkdayIdOrderByStartedAt(any())).thenAnswer(x->breakList); when(absences.findByWorkdayIdOrderByStartedAt(any())).thenAnswer(x->absenceList); when(breaks.save(any())).thenAnswer(x->{MealBreak b=x.getArgument(0);breakList.add(b);return b;}); when(absences.save(any())).thenAnswer(x->{PartialAbsence a=x.getArgument(0);absenceList.add(a);return a;}); when(corrections.save(any())).thenAnswer(x->{WorkdayTimeCorrection correction=x.getArgument(0);ReflectionTestUtils.setField(correction,"id",99L);return correction;}); }
  private Workday day(LocalDate date){var s=WorkdaySchedule.forDate(date).orElseThrow();return new Workday(user,date,"Europe/Madrid",s.variant(),s.start(),s.end(),s.maximumEconomicTime().getSeconds(),clock.instant());}
  private void existing(Workday d){ReflectionTestUtils.setField(d,"id",1L);when(workdays.findLockedByUserIdAndLocalDate(user.getId(),d.getLocalDate())).thenReturn(Optional.of(d));}
  @Test void rejectsPausePauseAndPauseAbsenceOverlaps(){var d=day(LocalDate.of(2026,7,6));existing(d); service.startMealBreak(d.getLocalDate()); assertThatThrownBy(()->service.startMealBreak(d.getLocalDate())).isInstanceOf(WorkdayConflictException.class); breakList.clear(); absenceList.add(new PartialAbsence(d,Instant.parse("2026-07-06T07:00:00Z"),Instant.parse("2026-07-06T09:00:00Z"),null)); assertThatThrownBy(()->service.startMealBreak(d.getLocalDate())).isInstanceOf(WorkdayIntervalValidationException.class);}
@@ -77,7 +78,7 @@ class WorkdayServiceTest {
 
  @Test void reconcileThroughTodayUsesTheUsersTimeZoneNotUtcToComputeToday(){
   Clock nearMidnightUtc = Clock.fixed(Instant.parse("2026-07-07T02:00:00Z"), ZoneOffset.UTC);
-  WorkdayService zonedService = new WorkdayService(workdays, breaks, absences, corrections, new EconomicTimeCalculator(), nearMidnightUtc, events, currentUser);
+  WorkdayService zonedService = new WorkdayService(workdays, breaks, absences, corrections, new EconomicTimeCalculator(), nearMidnightUtc, events, currentUser, users);
   // createdAt sits on the same Pacific-local day as "today" so this test isolates the timezone
   // conversion for `current()`/`reconcileThroughToday()`, without also exercising the backfill.
   AppUser pacificUser = new AppUser(UUID.randomUUID(), "test|workday-tz", "tz@test.invalid", "America/Los_Angeles", Instant.parse("2026-07-06T15:00:00Z"));

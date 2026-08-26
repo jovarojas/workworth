@@ -5,6 +5,7 @@ import com.workworth.workday.exception.*;
 import com.workworth.workday.persistence.*;
 import com.workworth.identity.application.CurrentUserProvider;
 import com.workworth.identity.persistence.AppUser;
+import com.workworth.identity.persistence.AppUserRepository;
 
 import java.time.*;
 import java.util.*;
@@ -24,8 +25,9 @@ public class WorkdayService {
     private final Clock clock;
     private final ApplicationEventPublisher events;
     private final CurrentUserProvider currentUser;
+    private final AppUserRepository users;
 
-    public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, ApplicationEventPublisher events, CurrentUserProvider currentUser) {
+    public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, ApplicationEventPublisher events, CurrentUserProvider currentUser, AppUserRepository users) {
         workdays = w;
         breaks = b;
         absences = a;
@@ -34,6 +36,7 @@ public class WorkdayService {
         this.clock = clock;
         this.events = events;
         this.currentUser = currentUser;
+        this.users = users;
     }
 
     @Transactional
@@ -89,11 +92,22 @@ public class WorkdayService {
         if (schedule.isEmpty()) throw new WorkdayNotFoundException("No standard workday exists for this date.");
         workdays.lockUserDate(user.getId(), date);
         Workday day = workdays.findLockedByUserIdAndLocalDate(user.getId(), date).orElseGet(() -> {
+            // user may be a detached instance (e.g. the scheduler or reconcileThroughToday's
+            // multi-date backfill threading one AppUser reference across several dates in this
+            // same transaction). Re-attaching it here before it backs a brand-new Workday avoids
+            // Hibernate ending up with two different managed objects for the same AppUser id in
+            // this session, which later throws NonUniqueObjectException when that same user is
+            // used again (e.g. materializing this workday's Earning locks the currency settings).
+            AppUser managed = attach(user);
             var s = schedule.get();
-            return workdays.save(new Workday(user, date, user.getTimeZone(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));
+            return workdays.save(new Workday(managed, date, managed.getTimeZone(), s.variant(), s.start(), s.end(), s.maximumEconomicTime().getSeconds(), now));
         });
         refresh(day, now);
         return day;
+    }
+
+    private AppUser attach(AppUser user) {
+        return users.findById(user.getId()).orElse(user);
     }
 
     @Transactional

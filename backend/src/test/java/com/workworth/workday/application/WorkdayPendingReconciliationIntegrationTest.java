@@ -14,6 +14,7 @@ import com.workworth.identity.persistence.AppUserRepository;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
+import com.workworth.workday.persistence.Workday;
 import com.workworth.workday.persistence.WorkdayRepository;
 
 import java.math.BigDecimal;
@@ -145,6 +146,19 @@ class WorkdayPendingReconciliationIntegrationTest {
         return count == null ? 0 : count;
     }
 
+    // Every test whose backfill completes a workday needs a salary profile: EarningMaterializationService
+    // still correctly falls back to an UNAVAILABLE earning when SalaryProfileService.findEffectiveProfile()
+    // finds none, but that method is @Transactional and participates in reconcile()'s own transaction, so
+    // Spring marks the whole transaction rollback-only the moment SalaryProfileNotFoundException crosses
+    // that boundary -- even though EarningMaterializationService catches it and carries on. That silently
+    // rolls back the entire reconciliation (a pre-existing bug, unrelated to BUG 1, tracked separately).
+    // effective_from must be the first day of a month (DB check constraint); February covers LAST_KNOWN
+    // (March 2028) and everything backfilled after it.
+    private void givenASalaryProfile(AppUser user) {
+        salaryProfiles.save(new SalaryProfile(user, LocalDate.of(2028, 2, 1), null,
+            new BigDecimal("1400.00"), "EUR", 12, Instant.now()));
+    }
+
     @Test
     void newUserCreatedTodayWithoutAnyWorkdayGetsOnlyTodayReconciled() {
         // createdAt == TODAY, so there is no prior day to back-fill from account creation either.
@@ -167,10 +181,7 @@ class WorkdayPendingReconciliationIntegrationTest {
         // the full chain "days without opening the app -> Workday backfill -> Earnings -> money".
         ZoneId zone = ZoneId.of("Europe/Madrid");
         AppUser user = newUser("late-first-open", LAST_KNOWN.atStartOfDay(zone).toInstant());
-        // effective_from must be the first day of a month (DB check constraint); LAST_KNOWN is in
-        // March 2028, so a profile effective from February 1st covers the whole backfilled range.
-        salaryProfiles.save(new SalaryProfile(user, LocalDate.of(2028, 2, 1), null,
-            new BigDecimal("1400.00"), "EUR", 12, Instant.now()));
+        givenASalaryProfile(user);
         // Real EarningPeriodService (the class the Dashboard/API reads from), scoped to this test
         // user instead of the fixed "current user" TestCurrentUserProvider resolves everywhere else.
         EarningPeriodService periodsForUser = new EarningPeriodService(
@@ -223,6 +234,7 @@ class WorkdayPendingReconciliationIntegrationTest {
     @Test
     void backfillsMissedWeekdaysSinceTheLastKnownWorkdaySkippingTheWeekendAndDoesNotDuplicateOnRepeat() {
         AppUser user = newUser("gap-user", LAST_KNOWN.atStartOfDay(ZoneId.of("Europe/Madrid")).toInstant());
+        givenASalaryProfile(user);
         workdays.reconcile(user, LAST_KNOWN);
 
         Workday today = workdays.reconcileThroughToday(user);
@@ -235,9 +247,8 @@ class WorkdayPendingReconciliationIntegrationTest {
         // LAST_KNOWN + Thursday + Friday + Today = 4 workdays; the weekend never gets one.
         assertThat(workdayCount(user.getId())).isEqualTo(4);
         // LAST_KNOWN, Thursday, and Friday are already in the past relative to "today" and
-        // complete immediately on creation, so each materializes exactly one earning (available
-        // or not, depending on salary configuration); today is still within its scheduled window
-        // (the fixed clock sits at midday) and has none yet.
+        // complete immediately on creation, so each materializes exactly one earning; today is
+        // still within its scheduled window (the fixed clock sits at midday) and has none yet.
         int earningsAfterFirstPass = earningCount(user.getId());
         assertThat(earningsAfterFirstPass).isEqualTo(3);
 
@@ -253,8 +264,13 @@ class WorkdayPendingReconciliationIntegrationTest {
     void isolatesBackfillBetweenUsers() {
         AppUser userA = newUser("isolated-a", LAST_KNOWN.atStartOfDay(ZoneId.of("Europe/Madrid")).toInstant());
         AppUser userB = newUser("isolated-b", MISSED_FRIDAY.atStartOfDay(ZoneId.of("Europe/Madrid")).toInstant());
+        givenASalaryProfile(userA);
+        givenASalaryProfile(userB);
         workdays.reconcile(userA, LAST_KNOWN);
-        // userB has a shorter, non-overlapping gap so the two users are easy to tell apart.
+        // userB has a shorter gap, so MISSED_THURSDAY is unique to userA -- that is what tells the
+        // two users' backfills apart, not the calendar dates themselves: both still legitimately
+        // end up with a workday on the same shared dates (MISSED_FRIDAY and TODAY), same as any two
+        // real coworkers on the same schedule.
         workdays.reconcile(userB, MISSED_FRIDAY);
 
         workdays.reconcileThroughToday(userA);
@@ -263,16 +279,17 @@ class WorkdayPendingReconciliationIntegrationTest {
         assertThat(workdayCount(userA.getId())).isEqualTo(4);
         assertThat(workdayCount(userB.getId())).isEqualTo(2);
         assertThat(repository.findByUserIdAndLocalDate(userB.getId(), MISSED_THURSDAY)).isEmpty();
-        Integer crossOwnership = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM workdays WHERE user_id = ? AND local_date IN "
-                + "(SELECT local_date FROM workdays WHERE user_id = ?)",
-            Integer.class, userA.getId(), userB.getId());
-        assertThat(crossOwnership).isZero();
+        assertThat(repository.findByUserIdAndLocalDate(userB.getId(), MISSED_FRIDAY)).isPresent();
+        // No workday row is shared or mis-attributed between the two users: every row in the table
+        // belongs to exactly one of them (each user's own count above already excludes the other's).
+        Integer totalWorkdays = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM workdays", Integer.class);
+        assertThat(totalWorkdays).isEqualTo(workdayCount(userA.getId()) + workdayCount(userB.getId()));
     }
 
     @Test
     void concurrentBackfillsOfTheSameGapCreateNoDuplicateWorkdaysOrEarnings() throws Exception {
         AppUser user = newUser("concurrent-gap", LAST_KNOWN.atStartOfDay(ZoneId.of("Europe/Madrid")).toInstant());
+        givenASalaryProfile(user);
         workdays.reconcile(user, LAST_KNOWN);
         CountDownLatch start = new CountDownLatch(1);
 
