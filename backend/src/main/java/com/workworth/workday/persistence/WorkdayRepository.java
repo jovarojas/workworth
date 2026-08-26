@@ -15,4 +15,7 @@ public interface WorkdayRepository extends JpaRepository<Workday, Long>, Workday
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select w from Workday w where w.user.id = :userId and w.localDate = :localDate")
     Optional<Workday> findLockedByUserIdAndLocalDate(UUID userId, LocalDate localDate);
+
+    @Query("select max(w.localDate) from Workday w where w.user.id = :userId")
+    Optional<LocalDate> findLatestLocalDate(UUID userId);
 }

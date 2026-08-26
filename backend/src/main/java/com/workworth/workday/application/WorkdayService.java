@@ -43,8 +43,43 @@ public class WorkdayService {
 
     @Transactional
     public Workday current() {
-        AppUser user = currentUser.currentUser();
-        return reconcile(user, LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone()))));
+        return reconcileThroughToday(currentUser.currentUser());
+    }
+
+    /**
+     * Reconciles every pending standard workday between the backfill anchor (inclusive) and
+     * today (exclusive), respecting the standard calendar, then reconciles today itself. This
+     * recovers automatic workdays for days the user never opened the app, without depending on
+     * a per-date query or the lifecycle scheduler having run for that date.
+     * <p>
+     * The anchor is the day after the user's last known workday when one exists, so that day
+     * (already reconciled) is never touched again; otherwise it is the user's account creation
+     * date ({@link AppUser#getCreatedAt()}), so a user who signs up and only opens the app days
+     * later still gets every working day since sign-up, never anything earlier. The walk never
+     * goes past today, so no future workday is ever created.
+     * <p>
+     * Reuses the existing per-date {@link #reconcile(AppUser, LocalDate)}, so it keeps the same
+     * idempotency, per-(user, date) locking, and calendar rules.
+     */
+    @Transactional
+    public Workday reconcileThroughToday(AppUser user) {
+        LocalDate today = LocalDate.now(clock.withZone(ZoneId.of(user.getTimeZone())));
+        reconcilePending(user, today);
+        return reconcile(user, today);
+    }
+
+    private void reconcilePending(AppUser user, LocalDate throughExclusive) {
+        ZoneId zone = ZoneId.of(user.getTimeZone());
+        LocalDate anchor = workdays.findLatestLocalDate(user.getId())
+            .map(lastKnown -> lastKnown.plusDays(1))
+            .orElseGet(() -> user.getCreatedAt().atZone(zone).toLocalDate());
+        LocalDate date = anchor;
+        while (date.isBefore(throughExclusive)) {
+            if (WorkdaySchedule.forDate(date).isPresent()) {
+                reconcile(user, date);
+            }
+            date = date.plusDays(1);
+        }
     }
 
     @Transactional
