@@ -77,6 +77,13 @@ public class SalaryProfileService {
         return findEffectiveProfile(currentUser.currentUser(), month);
     }
 
+    // Overrides the class-level default: EarningMaterializationService treats "no salary profile
+    // for this month" as an expected, handled outcome (it degrades the Earning to UNAVAILABLE),
+    // not an error. Without noRollbackFor, this method's own transactional proxy marks the
+    // participating transaction rollback-only the instant the exception is thrown here -- even
+    // though the caller catches it immediately after -- silently discarding whatever that
+    // transaction was reconciling. See EarningMaterializationService#create.
+    @Transactional(readOnly = true, noRollbackFor = SalaryProfileNotFoundException.class)
     public SalaryProfile findEffectiveProfile(AppUser user, YearMonth month) {
         return salaryProfileRepository.findTopByUserIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(user.getId(), month.atDay(1))
             .orElseThrow(() -> new SalaryProfileNotFoundException(
