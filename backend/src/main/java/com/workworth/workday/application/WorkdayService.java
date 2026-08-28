@@ -50,16 +50,16 @@ public class WorkdayService {
     }
 
     /**
-     * Reconciles every pending standard workday between the backfill anchor (inclusive) and
-     * today (exclusive), respecting the standard calendar, then reconciles today itself. This
-     * recovers automatic workdays for days the user never opened the app, without depending on
-     * a per-date query or the lifecycle scheduler having run for that date.
+     * Reconciles every pending standard workday between the user's account creation date
+     * ({@link AppUser#getCreatedAt()}, inclusive) and today (exclusive), respecting the standard
+     * calendar, then reconciles today itself. This recovers automatic workdays for days the user
+     * never opened the app, without depending on a per-date query or the lifecycle scheduler
+     * having run for that date.
      * <p>
-     * The anchor is the day after the user's last known workday when one exists, so that day
-     * (already reconciled) is never touched again; otherwise it is the user's account creation
-     * date ({@link AppUser#getCreatedAt()}), so a user who signs up and only opens the app days
-     * later still gets every working day since sign-up, never anything earlier. The walk never
-     * goes past today, so no future workday is ever created.
+     * Unlike an anchor derived from the single most recent workday, this detects every missing
+     * business day directly: a later date already having a Workday (created by the scheduler, a
+     * retry, or anything else) never hides an earlier gap underneath it. The walk never goes past
+     * today, so no future workday is ever created.
      * <p>
      * Reuses the existing per-date {@link #reconcile(AppUser, LocalDate)}, so it keeps the same
      * idempotency, per-(user, date) locking, and calendar rules.
@@ -73,12 +73,14 @@ public class WorkdayService {
 
     private void reconcilePending(AppUser user, LocalDate throughExclusive) {
         ZoneId zone = ZoneId.of(user.getTimeZone());
-        LocalDate anchor = workdays.findLatestLocalDate(user.getId())
-            .map(lastKnown -> lastKnown.plusDays(1))
-            .orElseGet(() -> user.getCreatedAt().atZone(zone).toLocalDate());
-        LocalDate date = anchor;
+        LocalDate start = user.getCreatedAt().atZone(zone).toLocalDate();
+        if (!start.isBefore(throughExclusive)) return;
+
+        Set<LocalDate> existing = new HashSet<>(
+            workdays.findLocalDatesByUserIdAndLocalDateBetween(user.getId(), start, throughExclusive));
+        LocalDate date = start;
         while (date.isBefore(throughExclusive)) {
-            if (WorkdaySchedule.forDate(date).isPresent()) {
+            if (!existing.contains(date) && WorkdaySchedule.forDate(date).isPresent()) {
                 reconcile(user, date);
             }
             date = date.plusDays(1);

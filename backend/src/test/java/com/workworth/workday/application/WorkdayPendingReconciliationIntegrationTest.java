@@ -6,6 +6,7 @@ import com.workworth.WorkWorthApplication;
 import com.workworth.earnings.application.EarningPeriodService;
 import com.workworth.earnings.domain.EarningPeriod;
 import com.workworth.earnings.domain.EarningStatus;
+import com.workworth.earnings.domain.EarningUnavailableReason;
 import com.workworth.earnings.persistence.EarningCorrectionRepository;
 import com.workworth.earnings.persistence.WorkdayEarning;
 import com.workworth.earnings.persistence.WorkdayEarningRepository;
@@ -51,8 +52,18 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Reproduces BUG 1: a user who does not open WorkWorth on a working day must still get that
  * day's automatic workday (and its earning) once she comes back, without duplicating anything
  * and without creating workdays for weekends. This includes a user who signs up and does not
- * open the app until several days later: her back-fill anchors on {@code AppUser#createdAt}
- * (never earlier), not just on her last known workday, so those days are not lost either.
+ * open the app until several days later: her back-fill starts at {@code AppUser#createdAt}
+ * (never earlier), not just at her last known workday, so those days are not lost either.
+ *
+ * Backfill is computed as "every laborable date in [createdAt, today) minus whatever already
+ * has a Workday" -- a real set difference, not a single MAX(local_date) pointer. This matters
+ * because a later Workday already existing (created by the scheduler, a retry, or anything
+ * else) must never hide an earlier interior gap underneath it; see the *InteriorGap* tests.
+ *
+ * Materializing one date's Earning is its own reconciliation unit: a failure there (e.g. no
+ * salary profile covering that date) must not roll back any other date's already-persisted
+ * Workday or Earning in the same reconcileThroughToday() call; see
+ * earningMaterializationFailureForSomeDatesDoesNotRollBackWorkdaysOrEarningsOfOtherDates.
  *
  * "Today" is pinned to a fixed Monday so the scenario (a two-business-day gap spanning one
  * weekend) is deterministic regardless of when the suite actually runs.
@@ -146,12 +157,9 @@ class WorkdayPendingReconciliationIntegrationTest {
         return count == null ? 0 : count;
     }
 
-    // Every test whose backfill completes a workday needs a salary profile: EarningMaterializationService
-    // still correctly falls back to an UNAVAILABLE earning when SalaryProfileService.findEffectiveProfile()
-    // finds none, but that method is @Transactional and participates in reconcile()'s own transaction, so
-    // Spring marks the whole transaction rollback-only the moment SalaryProfileNotFoundException crosses
-    // that boundary -- even though EarningMaterializationService catches it and carries on. That silently
-    // rolls back the entire reconciliation (a pre-existing bug, unrelated to BUG 1, tracked separately).
+    // Most tests give every user a salary profile so their earnings materialize as AVAILABLE and
+    // the assertions can check real amounts; earningMaterializationFailureForSomeDatesDoesNotRollBackWorkdaysOrEarningsOfOtherDates
+    // is the one that deliberately leaves part of the range uncovered.
     // effective_from must be the first day of a month (DB check constraint); February covers LAST_KNOWN
     // (March 2028) and everything backfilled after it.
     private void givenASalaryProfile(AppUser user) {
@@ -312,6 +320,93 @@ class WorkdayPendingReconciliationIntegrationTest {
                 + "GROUP BY workday_id HAVING COUNT(*) > 1) d",
             Integer.class);
         assertThat(duplicateEarnings).isZero();
+    }
+
+    // Direct regression test for the reported incident: miércoles (LAST_KNOWN) and viernes
+    // (MISSED_FRIDAY) already have a Workday, jueves (MISSED_THURSDAY) does not. The old
+    // MAX(local_date) anchor would see viernes as "last known" and never look back at jueves.
+    @Test
+    void fillsAnInteriorGapEvenWhenALaterWorkdayAlreadyExists() {
+        AppUser user = newUser("interior-gap", LAST_KNOWN.atStartOfDay(ZoneId.of("Europe/Madrid")).toInstant());
+        givenASalaryProfile(user);
+        workdays.reconcile(user, LAST_KNOWN);
+        workdays.reconcile(user, MISSED_FRIDAY);
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), MISSED_THURSDAY)).isEmpty();
+
+        Workday today = workdays.reconcileThroughToday(user);
+
+        assertThat(today.getLocalDate()).isEqualTo(TODAY);
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), MISSED_THURSDAY)).isPresent();
+        assertThat(workdayCount(user.getId())).isEqualTo(4);
+        assertThat(earningCount(user.getId())).isEqualTo(3);
+
+        // Repeating from this state must not duplicate anything either.
+        Workday repeated = workdays.reconcileThroughToday(user);
+        assertThat(repeated.getId()).isEqualTo(today.getId());
+        assertThat(workdayCount(user.getId())).isEqualTo(4);
+        assertThat(earningCount(user.getId())).isEqualTo(3);
+    }
+
+    // lunes✓ martes✗ miércoles✓ jueves✗ viernes✓ -- several non-contiguous interior gaps behind
+    // an already-existing later Workday, all recovered in a single pass.
+    @Test
+    void fillsMultipleNonContiguousInteriorGaps() {
+        LocalDate monday = LocalDate.of(2028, 3, 6);
+        LocalDate tuesday = LocalDate.of(2028, 3, 7);
+        ZoneId zone = ZoneId.of("Europe/Madrid");
+        AppUser user = newUser("multi-gap", monday.atStartOfDay(zone).toInstant());
+        givenASalaryProfile(user);
+        workdays.reconcile(user, monday);
+        workdays.reconcile(user, LAST_KNOWN);
+        workdays.reconcile(user, MISSED_FRIDAY);
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), tuesday)).isEmpty();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), MISSED_THURSDAY)).isEmpty();
+
+        Workday today = workdays.reconcileThroughToday(user);
+
+        assertThat(today.getLocalDate()).isEqualTo(TODAY);
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), tuesday)).isPresent();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), MISSED_THURSDAY)).isPresent();
+        // monday, tuesday, LAST_KNOWN, MISSED_THURSDAY, MISSED_FRIDAY, today = 6 workdays.
+        assertThat(workdayCount(user.getId())).isEqualTo(6);
+    }
+
+    // A workday's Earning is its own reconciliation unit: signing up in February but only getting
+    // a salary profile from March 1st onward (a realistic history -- SPEC 001 profiles apply
+    // forward from their effective_from) must not let February's SalaryProfileNotFoundException
+    // roll back March's already-reconciled Workdays and Earnings within the same call.
+    @Test
+    void earningMaterializationFailureForSomeDatesDoesNotRollBackWorkdaysOrEarningsOfOtherDates() {
+        LocalDate createdOn = LocalDate.of(2028, 2, 28); // Monday, no salary profile covers it yet
+        LocalDate secondUncovered = LocalDate.of(2028, 2, 29); // Tuesday
+        LocalDate firstCovered = LocalDate.of(2028, 3, 1); // Wednesday, salary profile starts here
+        ZoneId zone = ZoneId.of("Europe/Madrid");
+        AppUser user = newUser("earnings-failure-isolation", createdOn.atStartOfDay(zone).toInstant());
+        salaryProfiles.save(new SalaryProfile(user, firstCovered, null,
+            new BigDecimal("1400.00"), "EUR", 12, Instant.now()));
+
+        Workday today = workdays.reconcileThroughToday(user);
+
+        assertThat(today.getLocalDate()).isEqualTo(TODAY);
+        // Every business day since sign-up has its Workday, whether or not its month had salary
+        // coverage -- this is exactly what used to disappear, along with every later date in the
+        // same call, before Earnings materialization was isolated per date.
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), createdOn)).isPresent();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), secondUncovered)).isPresent();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), firstCovered)).isPresent();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), LAST_KNOWN)).isPresent();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), MISSED_THURSDAY)).isPresent();
+        assertThat(repository.findByUserIdAndLocalDate(user.getId(), MISSED_FRIDAY)).isPresent();
+
+        List<WorkdayEarning> earningsForUser = earningsRepository.findAllByWorkdayOwnerId(user.getId());
+        var uncovered = earningsForUser.stream().filter(e -> e.getLocalDate().isBefore(firstCovered)).toList();
+        var covered = earningsForUser.stream().filter(e -> !e.getLocalDate().isBefore(firstCovered)).toList();
+        assertThat(uncovered).extracting(WorkdayEarning::getLocalDate)
+            .containsExactlyInAnyOrder(createdOn, secondUncovered);
+        assertThat(uncovered).allMatch(e -> e.getStatus() == EarningStatus.UNAVAILABLE);
+        assertThat(uncovered).allMatch(e -> e.getUnavailableReason() == EarningUnavailableReason.SALARY_PROFILE_NOT_FOUND);
+        assertThat(covered).isNotEmpty();
+        assertThat(covered).allMatch(e -> e.getStatus() == EarningStatus.AVAILABLE);
     }
 
     private Workday reconcileAfter(CountDownLatch start, AppUser user) throws Exception {

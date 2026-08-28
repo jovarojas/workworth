@@ -37,21 +37,76 @@ class WorkdayServiceTest {
   when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
   Workday result = service.reconcileThroughToday(user);
   assertThat(result.getLocalDate()).isEqualTo(LocalDate.of(2026,7,6));
-  verify(workdays).findLatestLocalDate(user.getId());
+  // createdAt == today, so there is no [createdAt, today) window to scan at all.
+  verify(workdays, never()).findLocalDatesByUserIdAndLocalDateBetween(any(), any(), any());
   verify(workdays,times(1)).save(any());
  }
 
- @Test void reconcileThroughTodayBackfillsPendingWeekdaysSinceTheLastKnownWorkdaySkippingTheWeekend(){
-  when(workdays.findLatestLocalDate(user.getId())).thenReturn(Optional.of(LocalDate.of(2026,7,1)));
+ @Test void reconcileThroughTodayBackfillsMissingWeekdaysSinceCreationSkippingTheWeekendWhenAnEarlierWorkdayAlreadyExists(){
+  AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|workday-gap-tail", "gap-tail@test.invalid",
+      "Europe/Madrid", Instant.parse("2026-07-01T09:00:00Z"));
+  when(workdays.findLocalDatesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(LocalDate.of(2026,7,1)));
   when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
   ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
 
-  Workday result = service.reconcileThroughToday(user);
+  Workday result = service.reconcileThroughToday(createdEarlier);
 
   verify(workdays, times(3)).save(captor.capture());
   List<LocalDate> createdDates = captor.getAllValues().stream().map(Workday::getLocalDate).toList();
   assertThat(createdDates).containsExactly(LocalDate.of(2026,7,2), LocalDate.of(2026,7,3), LocalDate.of(2026,7,6));
   assertThat(result.getLocalDate()).isEqualTo(LocalDate.of(2026,7,6));
+ }
+
+ // Direct regression test for the reported incident: miércoles (2026-07-01) and viernes
+ // (2026-07-03) already have a Workday, jueves (2026-07-02) does not. The old MAX(local_date)
+ // anchor would see viernes as "last known" and never look back at jueves. The gap-detection
+ // design must find and backfill it regardless of what already exists after it.
+ @Test void reconcileThroughTodayFillsAnInteriorGapEvenWhenALaterWorkdayAlreadyExists(){
+  AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|interior-gap", "interior-gap@test.invalid",
+      "Europe/Madrid", Instant.parse("2026-07-01T09:00:00Z"));
+  when(workdays.findLocalDatesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(LocalDate.of(2026,7,1), LocalDate.of(2026,7,3)));
+  when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
+  ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
+
+  Workday result = service.reconcileThroughToday(createdEarlier);
+
+  verify(workdays, times(2)).save(captor.capture());
+  List<LocalDate> createdDates = captor.getAllValues().stream().map(Workday::getLocalDate).toList();
+  assertThat(createdDates).containsExactly(LocalDate.of(2026,7,2), LocalDate.of(2026,7,6));
+  assertThat(result.getLocalDate()).isEqualTo(LocalDate.of(2026,7,6));
+ }
+
+ // lunes✓ martes✗ miércoles✓ jueves✗ viernes✓ -- several non-contiguous interior gaps, all of
+ // them behind an already-existing later Workday.
+ @Test void reconcileThroughTodayFillsMultipleNonContiguousInteriorGaps(){
+  AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|multi-gap", "multi-gap@test.invalid",
+      "Europe/Madrid", Instant.parse("2026-06-29T09:00:00Z"));
+  when(workdays.findLocalDatesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(LocalDate.of(2026,6,29), LocalDate.of(2026,7,1), LocalDate.of(2026,7,3)));
+  when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
+  ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
+
+  Workday result = service.reconcileThroughToday(createdEarlier);
+
+  verify(workdays, times(3)).save(captor.capture());
+  List<LocalDate> createdDates = captor.getAllValues().stream().map(Workday::getLocalDate).toList();
+  assertThat(createdDates).containsExactly(LocalDate.of(2026,6,30), LocalDate.of(2026,7,2), LocalDate.of(2026,7,6));
+  assertThat(result.getLocalDate()).isEqualTo(LocalDate.of(2026,7,6));
+ }
+
+ @Test void reconcileThroughTodayNeverCreatesAWorkdayAfterToday(){
+  AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|no-future", "no-future@test.invalid",
+      "Europe/Madrid", Instant.parse("2026-06-29T09:00:00Z"));
+  when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
+  ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
+
+  service.reconcileThroughToday(createdEarlier);
+
+  verify(workdays, atLeastOnce()).save(captor.capture());
+  assertThat(captor.getAllValues().stream().map(Workday::getLocalDate))
+      .allMatch(date -> !date.isAfter(LocalDate.of(2026,7,6)));
  }
 
  // Regression test for BUG 1's remaining gap: a user who signed up several days before her
