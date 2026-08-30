@@ -15,6 +15,7 @@ import com.workworth.identity.persistence.AppUserRepository;
 import com.workworth.preferences.application.ApplicationCurrencyProvider;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
+import com.workworth.workday.domain.WorkdayStatus;
 import com.workworth.workday.persistence.Workday;
 import com.workworth.workday.persistence.WorkdayRepository;
 
@@ -407,6 +408,52 @@ class WorkdayPendingReconciliationIntegrationTest {
         assertThat(uncovered).allMatch(e -> e.getUnavailableReason() == EarningUnavailableReason.SALARY_PROFILE_NOT_FOUND);
         assertThat(covered).isNotEmpty();
         assertThat(covered).allMatch(e -> e.getStatus() == EarningStatus.AVAILABLE);
+    }
+
+    // Direct regression test for the reported production incident: some Workdays for this week
+    // already exist -- some COMPLETED, some stuck ACTIVE -- but earlier missed days generate no
+    // money. Filling only *missing* dates is not enough: an already-existing Workday whose
+    // scheduledEnd has elapsed without anyone ever calling reconcile() for that exact date again
+    // (e.g. the user opened the app once mid-shift and never reopened it that day) must also be
+    // refreshed in place, not just left as-is, so it reaches COMPLETED and materializes its
+    // Earning -- without creating a duplicate row for that date.
+    @Test
+    void anExistingWorkdayStuckActivePastItsScheduledEndAdvancesToCompletedAndMaterializesItsEarningOnTheNextReconciliation() {
+        ZoneId zone = ZoneId.of("Europe/Madrid");
+        AppUser user = newUser("stale-active", LAST_KNOWN.atStartOfDay(zone).toInstant());
+        givenASalaryProfile(user);
+        Workday created = workdays.reconcile(user, LAST_KNOWN);
+        assertThat(created.getStatus()).isEqualTo(WorkdayStatus.COMPLETED);
+        // Simulate, directly at the data level, the exact incident reported in production: a
+        // Workday whose status is still ACTIVE even though its scheduledEnd has long passed, and
+        // whose Earning was therefore never materialized -- because nothing except
+        // reconcile(user, thatExactDate) had ever revisited it since it was first created.
+        jdbcTemplate.update("DELETE FROM workday_earnings WHERE workday_id = ?", created.getId());
+        jdbcTemplate.update("UPDATE workdays SET status = 'ACTIVE' WHERE id = ?", created.getId());
+        assertThat(earningCount(user.getId())).isZero();
+
+        workdays.reconcileThroughToday(user);
+
+        Workday refreshed = repository.findByUserIdAndLocalDate(user.getId(), LAST_KNOWN).orElseThrow();
+        assertThat(refreshed.getStatus()).isEqualTo(WorkdayStatus.COMPLETED);
+        // The existing row was refreshed in place -- no duplicate Workday for the same date.
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM workdays WHERE user_id = ? AND local_date = ?",
+            Integer.class, user.getId(), LAST_KNOWN)).isEqualTo(1);
+        List<WorkdayEarning> earningsForUser = earningsRepository.findAllByWorkdayOwnerId(user.getId());
+        WorkdayEarning recovered = earningsForUser.stream()
+            .filter(e -> e.getLocalDate().equals(LAST_KNOWN)).findFirst().orElseThrow();
+        assertThat(recovered.getStatus()).isEqualTo(EarningStatus.AVAILABLE);
+        assertThat(recovered.getRawAmount().signum()).isPositive();
+
+        // The recovered earning is not just a row in the table -- it must actually reach the same
+        // EarningPeriodService the Dashboard/API reads its totals from.
+        EarningPeriodService periodsForUser = new EarningPeriodService(
+            earningsRepository, earningCorrections, clock, applicationCurrency, () -> user);
+        var allTime = periodsForUser.summarize(EarningPeriod.ALL_TIME);
+        assertThat(allTime.status()).isEqualTo(EarningStatus.AVAILABLE);
+        assertThat(allTime.publicAmount()).isPositive();
+        assertThat(allTime.internalAmount()).isEqualByComparingTo(recovered.getRawAmount().setScale(12, RoundingMode.HALF_UP));
     }
 
     private Workday reconcileAfter(CountDownLatch start, AppUser user) throws Exception {
