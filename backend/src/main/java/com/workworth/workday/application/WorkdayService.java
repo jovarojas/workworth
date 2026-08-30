@@ -27,6 +27,12 @@ public class WorkdayService {
     private final CurrentUserProvider currentUser;
     private final AppUserRepository users;
 
+    // A Workday is done catching up once it reaches one of these: COMPLETED can still gain a
+    // materialized Earning later (materialize() is independently idempotent), but its own status
+    // never needs touching again. CANCELLED is a deliberate terminal state and must stay that way.
+    private static final Set<WorkdayStatus> TERMINAL_WORKDAY_STATUSES =
+        EnumSet.of(WorkdayStatus.COMPLETED, WorkdayStatus.CANCELLED);
+
     public WorkdayService(WorkdayRepository w, MealBreakRepository b, PartialAbsenceRepository a, WorkdayTimeCorrectionRepository c, EconomicTimeCalculator calculator, Clock clock, ApplicationEventPublisher events, CurrentUserProvider currentUser, AppUserRepository users) {
         workdays = w;
         breaks = b;
@@ -76,12 +82,27 @@ public class WorkdayService {
         LocalDate start = user.getCreatedAt().atZone(zone).toLocalDate();
         if (!start.isBefore(throughExclusive)) return;
 
-        Set<LocalDate> existing = new HashSet<>(
-            workdays.findLocalDatesByUserIdAndLocalDateBetween(user.getId(), start, throughExclusive));
+        Map<LocalDate, WorkdayStatus> existing = new HashMap<>();
+        for (WorkdayRepository.WorkdayDateStatus row
+                : workdays.findDateStatusesByUserIdAndLocalDateBetween(user.getId(), start, throughExclusive)) {
+            existing.put(row.getLocalDate(), row.getStatus());
+        }
         LocalDate date = start;
         while (date.isBefore(throughExclusive)) {
-            if (!existing.contains(date) && WorkdaySchedule.forDate(date).isPresent()) {
-                reconcile(user, date);
+            if (WorkdaySchedule.forDate(date).isPresent()) {
+                WorkdayStatus status = existing.get(date);
+                // Two cases share the exact same recovery: a workable date with no Workday at all
+                // yet (status == null, the original missing-day gap), and a workable date whose
+                // Workday already exists but is still stuck SCHEDULED/ACTIVE/ON_MEAL_BREAK from a
+                // window that has since elapsed -- e.g. the user opened the app once that day and
+                // never came back, so nothing ever called reconcile() for that exact date again to
+                // advance it. reconcile() re-applies the same refresh() used everywhere else in the
+                // domain, which both cases need: create-if-missing, then recompute status against
+                // "now", publishing WorkdayCompletedEvent (and so materializing its Earning) the
+                // moment it first reaches COMPLETED, however long after the fact that happens.
+                if (status == null || !TERMINAL_WORKDAY_STATUSES.contains(status)) {
+                    reconcile(user, date);
+                }
             }
             date = date.plusDays(1);
         }

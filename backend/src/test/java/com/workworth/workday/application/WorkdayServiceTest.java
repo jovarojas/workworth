@@ -24,6 +24,13 @@ class WorkdayServiceTest {
  @BeforeEach void init(){clock=Clock.fixed(Instant.parse("2026-07-06T08:00:00Z"),ZoneId.of("Europe/Madrid")); user=new AppUser(UUID.randomUUID(),"test|workday","workday@test.invalid","Europe/Madrid",Instant.parse("2026-07-06T05:00:00Z"));when(currentUser.currentUser()).thenReturn(user); service=new WorkdayService(workdays,breaks,absences,corrections,new EconomicTimeCalculator(),clock,events,currentUser,users); when(breaks.findByWorkdayIdOrderByStartedAt(any())).thenAnswer(x->breakList); when(absences.findByWorkdayIdOrderByStartedAt(any())).thenAnswer(x->absenceList); when(breaks.save(any())).thenAnswer(x->{MealBreak b=x.getArgument(0);breakList.add(b);return b;}); when(absences.save(any())).thenAnswer(x->{PartialAbsence a=x.getArgument(0);absenceList.add(a);return a;}); when(corrections.save(any())).thenAnswer(x->{WorkdayTimeCorrection correction=x.getArgument(0);ReflectionTestUtils.setField(correction,"id",99L);return correction;}); }
  private Workday day(LocalDate date){var s=WorkdaySchedule.forDate(date).orElseThrow();return new Workday(user,date,"Europe/Madrid",s.variant(),s.start(),s.end(),s.maximumEconomicTime().getSeconds(),clock.instant());}
  private void existing(Workday d){ReflectionTestUtils.setField(d,"id",1L);when(workdays.findLockedByUserIdAndLocalDate(user.getId(),d.getLocalDate())).thenReturn(Optional.of(d));}
+ // Builds a WorkdayRepository.WorkdayDateStatus row for stubbing findDateStatusesByUserIdAndLocalDateBetween.
+ private WorkdayRepository.WorkdayDateStatus dateStatus(LocalDate date, WorkdayStatus status){
+  return new WorkdayRepository.WorkdayDateStatus(){
+   public LocalDate getLocalDate(){return date;}
+   public WorkdayStatus getStatus(){return status;}
+  };
+ }
  @Test void rejectsPausePauseAndPauseAbsenceOverlaps(){var d=day(LocalDate.of(2026,7,6));existing(d); service.startMealBreak(d.getLocalDate()); assertThatThrownBy(()->service.startMealBreak(d.getLocalDate())).isInstanceOf(WorkdayConflictException.class); breakList.clear(); absenceList.add(new PartialAbsence(d,Instant.parse("2026-07-06T07:00:00Z"),Instant.parse("2026-07-06T09:00:00Z"),null)); assertThatThrownBy(()->service.startMealBreak(d.getLocalDate())).isInstanceOf(WorkdayIntervalValidationException.class);}
  @Test void rejectsAbsenceAbsenceOverlapAndAllowsUpdate(){var d=day(LocalDate.of(2026,7,6));existing(d); var first=service.addAbsence(d.getLocalDate(),Instant.parse("2026-07-06T07:00:00Z"),Instant.parse("2026-07-06T08:00:00Z"),"doctor"); ReflectionTestUtils.setField(first,"id",2L); assertThatThrownBy(()->service.addAbsence(d.getLocalDate(),Instant.parse("2026-07-06T07:30:00Z"),Instant.parse("2026-07-06T08:30:00Z"),null)).isInstanceOf(WorkdayIntervalValidationException.class); when(absences.findById(first.getId())).thenReturn(Optional.of(first)); service.updateAbsence(d.getLocalDate(),first.getId(),Instant.parse("2026-07-06T09:00:00Z"),Instant.parse("2026-07-06T10:00:00Z"),"updated"); assertThat(first.getReason()).isEqualTo("updated");}
  @Test void reconcilesStatesCancelsAndAutoClosesBreak(){var scheduled=day(LocalDate.of(2026,7,7));existing(scheduled);assertThat(service.reconcile(scheduled.getLocalDate()).getStatus()).isEqualTo(WorkdayStatus.SCHEDULED);service.cancel(scheduled.getLocalDate(),"holiday");assertThat(scheduled.getStatus()).isEqualTo(WorkdayStatus.CANCELLED); var active=day(LocalDate.of(2026,7,6));existing(active);service.cancel(active.getLocalDate(),"holiday");assertThat(active.getStatus()).isEqualTo(WorkdayStatus.CANCELLED); var done=day(LocalDate.of(2026,7,3));existing(done);breakList.add(new MealBreak(done,Instant.parse("2026-07-03T12:00:00Z")));service.reconcile(done.getLocalDate());assertThat(done.getStatus()).isEqualTo(WorkdayStatus.COMPLETED);assertThat(breakList.get(0).isEndedAutomatically()).isTrue();service.cancel(done.getLocalDate(),"holiday");assertThat(done.getStatus()).isEqualTo(WorkdayStatus.CANCELLED);}
@@ -38,15 +45,15 @@ class WorkdayServiceTest {
   Workday result = service.reconcileThroughToday(user);
   assertThat(result.getLocalDate()).isEqualTo(LocalDate.of(2026,7,6));
   // createdAt == today, so there is no [createdAt, today) window to scan at all.
-  verify(workdays, never()).findLocalDatesByUserIdAndLocalDateBetween(any(), any(), any());
+  verify(workdays, never()).findDateStatusesByUserIdAndLocalDateBetween(any(), any(), any());
   verify(workdays,times(1)).save(any());
  }
 
  @Test void reconcileThroughTodayBackfillsMissingWeekdaysSinceCreationSkippingTheWeekendWhenAnEarlierWorkdayAlreadyExists(){
   AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|workday-gap-tail", "gap-tail@test.invalid",
       "Europe/Madrid", Instant.parse("2026-07-01T09:00:00Z"));
-  when(workdays.findLocalDatesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
-      .thenReturn(List.of(LocalDate.of(2026,7,1)));
+  when(workdays.findDateStatusesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(dateStatus(LocalDate.of(2026,7,1), WorkdayStatus.COMPLETED)));
   when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
   ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
 
@@ -65,8 +72,9 @@ class WorkdayServiceTest {
  @Test void reconcileThroughTodayFillsAnInteriorGapEvenWhenALaterWorkdayAlreadyExists(){
   AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|interior-gap", "interior-gap@test.invalid",
       "Europe/Madrid", Instant.parse("2026-07-01T09:00:00Z"));
-  when(workdays.findLocalDatesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
-      .thenReturn(List.of(LocalDate.of(2026,7,1), LocalDate.of(2026,7,3)));
+  when(workdays.findDateStatusesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(dateStatus(LocalDate.of(2026,7,1), WorkdayStatus.COMPLETED),
+          dateStatus(LocalDate.of(2026,7,3), WorkdayStatus.COMPLETED)));
   when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
   ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
 
@@ -83,8 +91,10 @@ class WorkdayServiceTest {
  @Test void reconcileThroughTodayFillsMultipleNonContiguousInteriorGaps(){
   AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|multi-gap", "multi-gap@test.invalid",
       "Europe/Madrid", Instant.parse("2026-06-29T09:00:00Z"));
-  when(workdays.findLocalDatesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
-      .thenReturn(List.of(LocalDate.of(2026,6,29), LocalDate.of(2026,7,1), LocalDate.of(2026,7,3)));
+  when(workdays.findDateStatusesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(dateStatus(LocalDate.of(2026,6,29), WorkdayStatus.COMPLETED),
+          dateStatus(LocalDate.of(2026,7,1), WorkdayStatus.COMPLETED),
+          dateStatus(LocalDate.of(2026,7,3), WorkdayStatus.COMPLETED)));
   when(workdays.save(any())).thenAnswer(x->x.getArgument(0));
   ArgumentCaptor<Workday> captor = ArgumentCaptor.forClass(Workday.class);
 
@@ -94,6 +104,44 @@ class WorkdayServiceTest {
   List<LocalDate> createdDates = captor.getAllValues().stream().map(Workday::getLocalDate).toList();
   assertThat(createdDates).containsExactly(LocalDate.of(2026,6,30), LocalDate.of(2026,7,2), LocalDate.of(2026,7,6));
   assertThat(result.getLocalDate()).isEqualTo(LocalDate.of(2026,7,6));
+ }
+
+
+ // Direct regression test for the reported production incident: some workdays already exist for
+ // this week (some COMPLETED, some ACTIVE), but earlier missed days generate no money because
+ // nothing ever revisits an existing-but-not-yet-terminal Workday once its scheduledEnd has
+ // elapsed without the user reopening the app that exact day. Filling only missing dates is not
+ // enough -- an already-existing stale ACTIVE/SCHEDULED/ON_MEAL_BREAK Workday must also be
+ // refreshed (not recreated) so it reaches COMPLETED and publishes WorkdayCompletedEvent, which is
+ // what triggers Earning materialization.
+ @Test void reconcileThroughTodayRefreshesAnExistingNonTerminalWorkdayWhoseScheduledEndHasAlreadyPassedAndPublishesItsCompletionEvent(){
+  AppUser createdEarlier = new AppUser(UUID.randomUUID(), "test|stale-active", "stale-active@test.invalid",
+      "Europe/Madrid", Instant.parse("2026-07-03T09:00:00Z"));
+  LocalDate staleDate = LocalDate.of(2026,7,3); // Friday; the only workable date in [createdAt, today)
+  var schedule = WorkdaySchedule.forDate(staleDate).orElseThrow();
+  Workday stale = new Workday(createdEarlier, staleDate, "Europe/Madrid", schedule.variant(), schedule.start(),
+      schedule.end(), schedule.maximumEconomicTime().getSeconds(), Instant.parse("2026-07-03T09:00:00Z"));
+  ReflectionTestUtils.setField(stale, "id", 5L);
+  // Stuck ACTIVE: the user opened the app once that day and never came back after its
+  // scheduledEnd (15:00 local, summer schedule) passed, so nothing ever advanced its status.
+  ReflectionTestUtils.setField(stale, "status", WorkdayStatus.ACTIVE);
+  when(workdays.findDateStatusesByUserIdAndLocalDateBetween(eq(createdEarlier.getId()), any(), any()))
+      .thenReturn(List.of(dateStatus(staleDate, WorkdayStatus.ACTIVE)));
+  when(workdays.findLockedByUserIdAndLocalDate(createdEarlier.getId(), staleDate)).thenReturn(Optional.of(stale));
+  when(workdays.save(any())).thenAnswer(x -> x.getArgument(0));
+
+  ArgumentCaptor<Workday> savedCaptor = ArgumentCaptor.forClass(Workday.class);
+
+  service.reconcileThroughToday(createdEarlier);
+
+  assertThat(stale.getStatus()).isEqualTo(WorkdayStatus.COMPLETED);
+  // The existing row for staleDate was refreshed in place -- reconcile() never had to fall back
+  // to the orElseGet(...) creation branch for it, so it never went through workdays.save(...).
+  verify(workdays, atLeast(0)).save(savedCaptor.capture());
+  assertThat(savedCaptor.getAllValues()).extracting(Workday::getLocalDate).doesNotContain(staleDate);
+  ArgumentCaptor<WorkdayCompletedEvent> captor = ArgumentCaptor.forClass(WorkdayCompletedEvent.class);
+  verify(events, atLeastOnce()).publishEvent(captor.capture());
+  assertThat(captor.getAllValues()).extracting(WorkdayCompletedEvent::workdayId).contains(stale.getId());
  }
 
  @Test void reconcileThroughTodayNeverCreatesAWorkdayAfterToday(){
