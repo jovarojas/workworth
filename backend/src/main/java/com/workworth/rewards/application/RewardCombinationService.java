@@ -58,7 +58,7 @@ public class RewardCombinationService {
     }
 
     private List<Reward> pendingRewards(Set<Long> excludeRewardIds) {
-        return rewards.findAllByUserIdAndStatusOrderByIdAsc(currentUser.currentUser().getId(), RewardStatus.PENDING).stream()
+        return rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(currentUser.currentUser().getId(), RewardStatus.PENDING).stream()
             .filter(reward -> !excludeRewardIds.contains(reward.getId()))
             .toList();
     }

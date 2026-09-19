@@ -41,7 +41,7 @@ class RewardCombinationServiceTest {
         Reward hamburgers = reward(1L, "Hamburguesas", 2, "30.00");
         Reward funkos = reward(2L, "Funkos", 2, "60.00");
         Reward book = reward(3L, "Libro", 1, "80.00");
-        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(List.of(hamburgers, funkos, book));
+        when(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(List.of(hamburgers, funkos, book));
         RewardCombinationService service = service(rewards, periods, currency);
 
         var combination = service.combination(EarningPeriod.TODAY, Set.of());
@@ -75,7 +75,7 @@ class RewardCombinationServiceTest {
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(available(EarningPeriod.TODAY, "90.00"));
-        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         RewardCombinationService service = service(rewards, periods, currency);
 
         var relevance = service.relevantCombination();
@@ -92,7 +92,7 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(available(EarningPeriod.TODAY, "50.00"));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "90.00"));
         RewardCombinationService service = service(rewards, periods, currency);
@@ -108,7 +108,7 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(available(EarningPeriod.TODAY, "20.00"));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "50.00"));
         when(periods.summarize(EarningPeriod.MONTH)).thenReturn(available(EarningPeriod.MONTH, "90.00"));
@@ -132,7 +132,7 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         when(periods.summarize(EarningPeriod.TODAY)).thenReturn(unavailable(EarningPeriod.TODAY));
         when(periods.summarize(EarningPeriod.WEEK)).thenReturn(available(EarningPeriod.WEEK, "90.00"));
         RewardCombinationService service = service(rewards, periods, currency);
@@ -157,7 +157,7 @@ class RewardCombinationServiceTest {
         RewardRepository rewards = mock(RewardRepository.class);
         EarningPeriodService periods = mock(EarningPeriodService.class);
         ApplicationCurrencyProvider currency = currency();
-        when(rewards.findAllByUserIdAndStatusOrderByIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
+        when(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq(RewardStatus.PENDING))).thenReturn(pendingRewards());
         for (EarningPeriod context : EarningPeriod.values()) {
             when(periods.summarize(context)).thenReturn(available(context, "20.00"));
         }
