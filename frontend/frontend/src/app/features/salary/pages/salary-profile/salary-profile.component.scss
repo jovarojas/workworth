@@ -46,6 +46,7 @@
 .rate-card,
 .setup-card,
 .upcoming-card,
+.history-card,
 .estimator mat-card {
   border: 1px solid #e1e5ee;
   border-radius: 1rem;
@@ -69,6 +70,13 @@
 .upcoming-card,
 .change-form-card {
   grid-column: 1 / -1;
+}
+
+.upcoming-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: .25rem;
 }
 
 .upcoming-card--empty {
@@ -197,10 +205,77 @@ mat-form-field {
   }
 }
 
+.history-section {
+  margin-top: 1rem;
+}
+
+.history-section__toggle {
+  width: 100%;
+  justify-content: flex-start;
+  gap: .5rem;
+  color: #56627a;
+}
+
+.history-card {
+  margin-top: 1rem;
+}
+
+.history-list {
+  display: grid;
+  gap: .75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid #e1e5ee;
+
+    &:last-child {
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+}
+
+.history-list__date {
+  color: #56627a;
+  font-size: .875rem;
+}
+
+.history-list__amount {
+  color: #172033;
+  font-weight: 700;
+}
+
+.history-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  color: #56627a;
+  font-size: .875rem;
+}
+
 @media (max-width: 620px) {
   .salary-grid,
   .profile-data,
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .upcoming-card__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .history-pagination {
+    flex-direction: column;
+    gap: .5rem;
   }
 }

@@ -72,6 +72,14 @@
             <p class="eyebrow">CAMBIO PROGRAMADO</p>
             <h2>{{ upcoming.netMonthlyReal | currency:upcoming.currencyCode:'symbol':'1.2-2' }} desde el {{ upcoming.effectiveFrom }}</h2>
             <p class="rate-card__detail">Sustituirá al neto mensual actual en cuanto empiece ese mes. Lo ya registrado no se recalcula.</p>
+            @if (!showChangeForm()) {
+              <div class="upcoming-card__actions">
+                <button mat-stroked-button type="button" (click)="openEditUpcomingForm()">Editar</button>
+                <button mat-stroked-button type="button" color="warn" [disabled]="cancellingUpcoming()" (click)="cancelUpcoming()">
+                  @if (cancellingUpcoming()) { Cancelando… } @else { Cancelar cambio }
+                </button>
+              </div>
+            }
           </mat-card-content>
         </mat-card>
       } @else if (!showChangeForm()) {
@@ -109,7 +117,7 @@
 
               <div class="form-row">
                 <button mat-flat-button type="submit" [disabled]="saving() || loadingCurrency() || !!currencyError()">
-                  @if (saving()) { Guardando… } @else { Programar cambio }
+                  @if (saving()) { Guardando… } @else { Guardar cambio }
                 </button>
                 <button mat-stroked-button type="button" (click)="closeChangeForm()" [disabled]="saving()">Cancelar</button>
               </div>
@@ -215,5 +223,51 @@
         }
       </mat-card-content>
     </mat-card>
+  </section>
+
+  <section class="history-section" aria-labelledby="history-heading">
+    <button mat-stroked-button type="button" class="history-section__toggle" (click)="toggleHistory()">
+      <mat-icon aria-hidden="true">{{ showHistory() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      <span id="history-heading">{{ showHistory() ? 'Ocultar historial salarial' : 'Ver historial salarial' }}</span>
+    </button>
+
+    @if (showHistory()) {
+      <mat-card class="history-card">
+        <mat-card-content>
+          @if (historyLoading()) {
+            <div class="loading loading--compact" aria-live="polite"><mat-spinner diameter="24" /> Cargando historial…</div>
+          } @else if (historyError(); as errorMessage) {
+            <div class="feedback feedback--error" role="alert">
+              <p>{{ errorMessage }}</p>
+              <button mat-stroked-button type="button" (click)="loadHistory(historyPage())">Reintentar</button>
+            </div>
+          } @else if (history().length === 0) {
+            <p class="rate-card__detail">Todavía no hay perfiles salariales anteriores.</p>
+          } @else {
+            <ul class="history-list">
+              @for (item of history(); track item.id) {
+                <li>
+                  <span class="history-list__date">{{ item.effectiveFrom }}</span>
+                  <span class="history-list__amount">
+                    @if (item.netMonthlyReal !== null) {
+                      {{ item.netMonthlyReal | currency:item.currencyCode:'symbol':'1.2-2' }}
+                    } @else {
+                      No disponible
+                    }
+                  </span>
+                </li>
+              }
+            </ul>
+            @if (historyTotalPages() > 1) {
+              <div class="history-pagination">
+                <button mat-stroked-button type="button" [disabled]="historyPage() === 0 || historyLoading()" (click)="previousHistoryPage()">Anterior</button>
+                <span>Página {{ historyPage() + 1 }} de {{ historyTotalPages() }}</span>
+                <button mat-stroked-button type="button" [disabled]="historyPage() + 1 >= historyTotalPages() || historyLoading()" (click)="nextHistoryPage()">Siguiente</button>
+              </div>
+            }
+          }
+        </mat-card-content>
+      </mat-card>
+    }
   </section>
 </main>

@@ -12,7 +12,9 @@ import com.workworth.preferences.domain.ApplicationCurrency;
 import com.workworth.salary.api.dto.CreateSalaryProfileRequest;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
 import com.workworth.salary.api.dto.UpcomingSalaryProfileResponse;
+import com.workworth.salary.api.dto.UpdateUpcomingSalaryProfileRequest;
 import com.workworth.salary.exception.SalaryProfileConflictException;
+import com.workworth.salary.exception.SalaryProfileNotFoundException;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
 import com.workworth.identity.application.CurrentUserProvider;
@@ -116,6 +118,57 @@ class SalaryProfileServiceTest {
         assertThat(upcoming.salaryProfile()).isNotNull();
         assertThat(upcoming.salaryProfile().effectiveFrom()).isEqualTo(LocalDate.of(2026, 9, 1));
         assertThat(upcoming.salaryProfile().netMonthlyReal()).isEqualByComparingTo("1500.00");
+    }
+
+    @Test
+    void updatesTheAmountOfAnAlreadyScheduledChangeWithoutTouchingItsEffectiveDate() {
+        AppUser user = currentUser.currentUser();
+        SalaryProfile scheduled = new SalaryProfile(user, LocalDate.of(2026, 9, 1), null,
+            new BigDecimal("1500.00"), "EUR", 12, Instant.EPOCH);
+        when(salaryProfileRepository.findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+                any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 8, 1))))
+            .thenReturn(java.util.Optional.of(scheduled));
+
+        SalaryProfileResponse response = salaryProfileService.updateUpcoming(
+            new UpdateUpcomingSalaryProfileRequest(new BigDecimal("1600.00")));
+
+        assertThat(response.netMonthlyReal()).isEqualByComparingTo("1600.00");
+        assertThat(response.effectiveFrom()).isEqualTo(LocalDate.of(2026, 9, 1));
+    }
+
+    @Test
+    void rejectsUpdatingWhenNoChangeIsCurrentlyScheduled() {
+        when(salaryProfileRepository.findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+                any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 8, 1))))
+            .thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> salaryProfileService.updateUpcoming(
+            new UpdateUpcomingSalaryProfileRequest(new BigDecimal("1600.00"))))
+            .isInstanceOf(SalaryProfileNotFoundException.class);
+    }
+
+    @Test
+    void cancelsAnAlreadyScheduledChange() {
+        AppUser user = currentUser.currentUser();
+        SalaryProfile scheduled = new SalaryProfile(user, LocalDate.of(2026, 9, 1), null,
+            new BigDecimal("1500.00"), "EUR", 12, Instant.EPOCH);
+        when(salaryProfileRepository.findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+                any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 8, 1))))
+            .thenReturn(java.util.Optional.of(scheduled));
+
+        salaryProfileService.cancelUpcoming();
+
+        verify(salaryProfileRepository).delete(scheduled);
+    }
+
+    @Test
+    void rejectsCancellingWhenNoChangeIsCurrentlyScheduled() {
+        when(salaryProfileRepository.findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+                any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 8, 1))))
+            .thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> salaryProfileService.cancelUpcoming())
+            .isInstanceOf(SalaryProfileNotFoundException.class);
     }
 
     private CreateSalaryProfileRequest request(LocalDate effectiveFrom, BigDecimal netMonthlyReal) {

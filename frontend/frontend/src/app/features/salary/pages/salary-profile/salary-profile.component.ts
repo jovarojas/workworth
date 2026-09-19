@@ -74,9 +74,18 @@ export class SalaryProfileComponent implements OnInit {
   readonly upcomingProfile = signal<SalaryProfileResponse | null>(null);
   readonly loadingUpcoming = signal(true);
   readonly upcomingError = signal<string | null>(null);
+  readonly cancellingUpcoming = signal(false);
 
   readonly showChangeForm = signal(false);
-  private formMode: 'setup' | 'change' = 'setup';
+  private formMode: 'setup' | 'change' | 'edit-upcoming' = 'setup';
+
+  private static readonly HISTORY_PAGE_SIZE = 10;
+  readonly showHistory = signal(false);
+  readonly history = signal<SalaryProfileResponse[]>([]);
+  readonly historyLoading = signal(false);
+  readonly historyError = signal<string | null>(null);
+  readonly historyPage = signal(0);
+  readonly historyTotalPages = signal(0);
 
   readonly estimatorNotImplemented = computed(() => this.estimator()?.status === 'NOT_IMPLEMENTED');
 
@@ -121,11 +130,24 @@ export class SalaryProfileComponent implements OnInit {
 
   openChangeForm(): void {
     this.formMode = 'change';
-    this.submitted.set(false);
-    this.submitError.set(null);
-    this.fieldErrors.set({});
+    this.resetChangeFormFeedback();
     this.form.controls.netMonthlyReal.setValue('');
     this.form.controls.effectiveFrom.setValue(this.nextMonthFirstDay());
+    this.form.controls.effectiveFrom.disable({ emitEvent: false });
+    this.showChangeForm.set(true);
+  }
+
+  openEditUpcomingForm(): void {
+    const upcoming = this.upcomingProfile();
+    if (!upcoming) {
+      return;
+    }
+    this.formMode = 'edit-upcoming';
+    this.resetChangeFormFeedback();
+    this.form.controls.netMonthlyReal.setValue(
+      upcoming.netMonthlyReal === null ? '' : String(upcoming.netMonthlyReal)
+    );
+    this.form.controls.effectiveFrom.setValue(upcoming.effectiveFrom);
     this.form.controls.effectiveFrom.disable({ emitEvent: false });
     this.showChangeForm.set(true);
   }
@@ -133,11 +155,70 @@ export class SalaryProfileComponent implements OnInit {
   closeChangeForm(): void {
     this.showChangeForm.set(false);
     this.formMode = 'setup';
+    this.resetChangeFormFeedback();
+    this.form.controls.effectiveFrom.enable({ emitEvent: false });
+    this.form.controls.effectiveFrom.setValue(this.currentMonthFirstDay());
+  }
+
+  cancelUpcoming(): void {
+    if (this.cancellingUpcoming()
+      || !window.confirm('¿Cancelar el cambio de salario programado? Volverá a aplicarse el neto mensual actual.')) {
+      return;
+    }
+
+    this.cancellingUpcoming.set(true);
+    this.upcomingError.set(null);
+    this.salaries.cancelUpcoming()
+      .pipe(finalize(() => this.cancellingUpcoming.set(false)))
+      .subscribe({
+        next: () => this.upcomingProfile.set(null),
+        error: (error: unknown) => this.upcomingError.set(
+          this.errorDetail(error, 'No se ha podido cancelar el cambio de salario programado.')
+        )
+      });
+  }
+
+  toggleHistory(): void {
+    const next = !this.showHistory();
+    this.showHistory.set(next);
+    if (next && this.history().length === 0 && !this.historyLoading()) {
+      this.loadHistory(0);
+    }
+  }
+
+  loadHistory(page: number): void {
+    this.historyLoading.set(true);
+    this.historyError.set(null);
+    this.salaries.history(page, SalaryProfileComponent.HISTORY_PAGE_SIZE)
+      .pipe(finalize(() => this.historyLoading.set(false)))
+      .subscribe({
+        next: (result) => {
+          this.history.set(result.content);
+          this.historyPage.set(result.page);
+          this.historyTotalPages.set(result.totalPages);
+        },
+        error: (error: unknown) => this.historyError.set(
+          this.errorDetail(error, 'No se ha podido cargar el historial salarial.')
+        )
+      });
+  }
+
+  nextHistoryPage(): void {
+    if (this.historyPage() + 1 < this.historyTotalPages()) {
+      this.loadHistory(this.historyPage() + 1);
+    }
+  }
+
+  previousHistoryPage(): void {
+    if (this.historyPage() > 0) {
+      this.loadHistory(this.historyPage() - 1);
+    }
+  }
+
+  private resetChangeFormFeedback(): void {
     this.submitted.set(false);
     this.submitError.set(null);
     this.fieldErrors.set({});
-    this.form.controls.effectiveFrom.enable({ emitEvent: false });
-    this.form.controls.effectiveFrom.setValue(this.currentMonthFirstDay());
   }
 
   loadCurrentProfile(): void {
@@ -200,6 +281,11 @@ export class SalaryProfileComponent implements OnInit {
     this.submitError.set(null);
     this.fieldErrors.set({});
 
+    if (this.formMode === 'edit-upcoming') {
+      this.submitUpcomingEdit();
+      return;
+    }
+
     const applicationCurrency = this.applicationCurrency();
     if (this.form.invalid || this.saving() || this.loadingCurrency() || !applicationCurrency) {
       this.form.markAllAsTouched();
@@ -224,6 +310,22 @@ export class SalaryProfileComponent implements OnInit {
             this.handleProfileSaved(profile);
           }
         },
+        error: (error: unknown) => this.handleSubmissionError(error)
+      });
+  }
+
+  private submitUpcomingEdit(): void {
+    const control = this.form.controls.netMonthlyReal;
+    if (control.invalid || this.saving()) {
+      control.markAsTouched();
+      return;
+    }
+
+    this.saving.set(true);
+    this.salaries.updateUpcoming(Number(control.value))
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (profile) => this.handleChangeScheduled(profile),
         error: (error: unknown) => this.handleSubmissionError(error)
       });
   }

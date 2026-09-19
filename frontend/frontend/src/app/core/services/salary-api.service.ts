@@ -7,6 +7,7 @@ import {
   CurrentSalaryProfileResponse,
   EstimatorStatusResponse,
   MonthlySalaryRateResponse,
+  SalaryProfileHistoryResponse,
   SalaryProfileResponse,
   UpcomingSalaryProfileResponse
 } from '../models/workworth-api.models';
@@ -27,6 +28,20 @@ export class SalaryApiService {
 
   upcoming(): Observable<UpcomingSalaryProfileResponse> {
     return this.http.get<UpcomingSalaryProfileResponse>(`${this.apiBaseUrl}/salary-profiles/upcoming`);
+  }
+
+  updateUpcoming(netMonthlyReal: number): Observable<SalaryProfileResponse> {
+    return this.http.put<SalaryProfileResponse>(`${this.apiBaseUrl}/salary-profiles/upcoming`, { netMonthlyReal });
+  }
+
+  cancelUpcoming(): Observable<void> {
+    return this.http.delete<void>(`${this.apiBaseUrl}/salary-profiles/upcoming`);
+  }
+
+  history(page: number, size: number): Observable<SalaryProfileHistoryResponse> {
+    return this.http.get<SalaryProfileHistoryResponse>(`${this.apiBaseUrl}/salary-profiles`, {
+      params: { page, size }
+    });
   }
 
   rate(month: string): Observable<MonthlySalaryRateResponse> {

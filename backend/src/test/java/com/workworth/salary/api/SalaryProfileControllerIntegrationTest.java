@@ -1,7 +1,9 @@
 package com.workworth.salary.api;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -88,4 +90,38 @@ class SalaryProfileControllerIntegrationTest {
                 .andExpect(jsonPath("$.salaryProfile.effectiveFrom").value(nextMonth.toString()))
                 .andExpect(jsonPath("$.salaryProfile.netMonthlyReal").value(1500.00));
     }
+
+    // Self-contained (creates and then fully disposes of its own scheduled change) rather than
+    // asserting anything about other tests' data, since this class does not reset state between
+    // tests -- matching the pattern already used above.
+    @Test
+    void editsAndThenCancelsAnAlreadyScheduledSalaryChange() throws Exception {
+        LocalDate nextMonth = YearMonth.now().plusMonths(1).atDay(1);
+        String request = "{\"effectiveFrom\":\"" + nextMonth + "\",\"netMonthlyReal\":1700.00,"
+            + "\"currencyCode\":\"EUR\",\"payPeriods\":12}";
+
+        mockMvc.perform(post("/api/v1/salary-profiles")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(put("/api/v1/salary-profiles/upcoming")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"netMonthlyReal\":1800.00}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.netMonthlyReal").value(1800.00))
+                .andExpect(jsonPath("$.effectiveFrom").value(nextMonth.toString()));
+
+        mockMvc.perform(get("/api/v1/salary-profiles/upcoming"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.salaryProfile.netMonthlyReal").value(1800.00));
+
+        mockMvc.perform(delete("/api/v1/salary-profiles/upcoming"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/salary-profiles/upcoming"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.salaryProfile").value(org.hamcrest.Matchers.nullValue()));
+    }
+
 }

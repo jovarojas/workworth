@@ -226,6 +226,14 @@ export interface UpcomingSalaryProfileResponse {
   salaryProfile: SalaryProfileResponse | null;
 }
 
+export interface SalaryProfileHistoryResponse {
+  content: SalaryProfileResponse[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 export interface MonthlySalaryRateResponse {
   month: string;
   incomeSource: IncomeSource;
