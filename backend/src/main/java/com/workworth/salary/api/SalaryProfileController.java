@@ -6,6 +6,7 @@ import com.workworth.salary.api.dto.EstimatorStatusResponse;
 import com.workworth.salary.api.dto.MonthlySalaryRateResponse;
 import com.workworth.salary.api.dto.SalaryProfileHistoryResponse;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
+import com.workworth.salary.api.dto.UpcomingSalaryProfileResponse;
 import com.workworth.salary.application.MonthlySalaryRateService;
 import com.workworth.salary.application.SalaryProfileService;
 import com.workworth.salary.domain.EstimatorStatus;
@@ -59,6 +60,11 @@ public class SalaryProfileController {
         return ResponseEntity.ok(new CurrentSalaryProfileResponse(
             requestedMonth,
             salaryProfileService.getCurrent(requestedMonth)));
+    }
+
+    @GetMapping("/salary-profiles/upcoming")
+    public ResponseEntity<UpcomingSalaryProfileResponse> getUpcoming() {
+        return ResponseEntity.ok(salaryProfileService.getUpcoming());
     }
 
     @GetMapping("/salary-profiles")

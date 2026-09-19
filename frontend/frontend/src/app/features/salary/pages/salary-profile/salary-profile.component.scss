@@ -45,6 +45,7 @@
 .profile-card,
 .rate-card,
 .setup-card,
+.upcoming-card,
 .estimator mat-card {
   border: 1px solid #e1e5ee;
   border-radius: 1rem;
@@ -54,9 +55,44 @@
 .profile-card h2,
 .rate-card h2,
 .setup-card h2,
+.upcoming-card h2,
 .estimator h2 {
   margin: .3rem 0 1.5rem;
   color: #172033;
+}
+
+.upcoming-card h2 {
+  margin-bottom: .5rem;
+  font-size: 1.25rem;
+}
+
+.upcoming-card,
+.change-form-card {
+  grid-column: 1 / -1;
+}
+
+.upcoming-card--empty {
+  border-style: dashed;
+
+  mat-card-content {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem 1rem;
+  }
+
+  .eyebrow {
+    width: 100%;
+  }
+
+  .rate-card__detail {
+    margin: 0;
+    flex: 1 1 20rem;
+  }
+
+  button {
+    margin-left: auto;
+  }
 }
 
 .rate-card h2 {

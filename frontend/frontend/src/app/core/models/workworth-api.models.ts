@@ -222,6 +222,10 @@ export interface CurrentSalaryProfileResponse {
   salaryProfile: SalaryProfileResponse;
 }
 
+export interface UpcomingSalaryProfileResponse {
+  salaryProfile: SalaryProfileResponse | null;
+}
+
 export interface MonthlySalaryRateResponse {
   month: string;
   incomeSource: IncomeSource;

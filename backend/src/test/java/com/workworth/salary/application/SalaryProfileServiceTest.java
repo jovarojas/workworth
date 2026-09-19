@@ -11,6 +11,7 @@ import com.workworth.preferences.application.ApplicationCurrencyService;
 import com.workworth.preferences.domain.ApplicationCurrency;
 import com.workworth.salary.api.dto.CreateSalaryProfileRequest;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
+import com.workworth.salary.api.dto.UpcomingSalaryProfileResponse;
 import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.persistence.SalaryProfile;
 import com.workworth.salary.persistence.SalaryProfileRepository;
@@ -86,6 +87,35 @@ class SalaryProfileServiceTest {
         assertThatThrownBy(() -> salaryProfileService.create(request))
                 .isInstanceOf(SalaryProfileConflictException.class)
                 .hasMessageContaining("first day");
+    }
+
+    @Test
+    void getUpcomingReturnsNullWhenNoFutureSalaryBasisIsScheduled() {
+        // The fixture clock sits at 2026-08-10, so "current month" is August 2026 and the
+        // boundary the service asks the repository about is 2026-08-01.
+        when(salaryProfileRepository.findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+                any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 8, 1))))
+            .thenReturn(java.util.Optional.empty());
+
+        UpcomingSalaryProfileResponse upcoming = salaryProfileService.getUpcoming();
+
+        assertThat(upcoming.salaryProfile()).isNull();
+    }
+
+    @Test
+    void getUpcomingReturnsAnAlreadyScheduledFutureSalaryBasis() {
+        AppUser user = currentUser.currentUser();
+        SalaryProfile scheduled = new SalaryProfile(user, LocalDate.of(2026, 9, 1), null,
+            new BigDecimal("1500.00"), "EUR", 12, Instant.EPOCH);
+        when(salaryProfileRepository.findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+                any(), org.mockito.ArgumentMatchers.eq(LocalDate.of(2026, 8, 1))))
+            .thenReturn(java.util.Optional.of(scheduled));
+
+        UpcomingSalaryProfileResponse upcoming = salaryProfileService.getUpcoming();
+
+        assertThat(upcoming.salaryProfile()).isNotNull();
+        assertThat(upcoming.salaryProfile().effectiveFrom()).isEqualTo(LocalDate.of(2026, 9, 1));
+        assertThat(upcoming.salaryProfile().netMonthlyReal()).isEqualByComparingTo("1500.00");
     }
 
     private CreateSalaryProfileRequest request(LocalDate effectiveFrom, BigDecimal netMonthlyReal) {

@@ -57,4 +57,41 @@ class SalaryProfileRepositoryIntegrationTest {
 
         assertThat(profile.getNetMonthlyReal()).isEqualByComparingTo("1300.00");
     }
+
+    @Test
+    void findsTheEarliestNotYetEffectiveProfileAsUpcomingAndIgnoresPastOrCurrentOnes() {
+        AppUser user = users.save(new AppUser(UUID.randomUUID(), "test|salary-upcoming",
+            "salary-upcoming@test.invalid", "Europe/Madrid", Instant.EPOCH));
+        salaryProfileRepository.save(new SalaryProfile(
+                user, LocalDate.of(2026, 8, 1), null, new BigDecimal("1250.00"),
+                "EUR", 12, Instant.parse("2026-08-01T00:00:00Z")));
+        salaryProfileRepository.save(new SalaryProfile(
+                user, LocalDate.of(2026, 9, 1), null, new BigDecimal("1300.00"),
+                "EUR", 12, Instant.parse("2026-09-01T00:00:00Z")));
+        salaryProfileRepository.save(new SalaryProfile(
+                user, LocalDate.of(2026, 11, 1), null, new BigDecimal("1500.00"),
+                "EUR", 12, Instant.parse("2026-09-15T00:00:00Z")));
+
+        // "Current month" is September: August is already in the past, September is the active
+        // basis, and only November (later than September) is still upcoming.
+        SalaryProfile upcoming = salaryProfileRepository
+                .findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(user.getId(), LocalDate.of(2026, 9, 1))
+                .orElseThrow();
+
+        assertThat(upcoming.getEffectiveFrom()).isEqualTo(LocalDate.of(2026, 11, 1));
+        assertThat(upcoming.getNetMonthlyReal()).isEqualByComparingTo("1500.00");
+    }
+
+    @Test
+    void findsNoUpcomingProfileWhenNoneIsScheduledBeyondTheCurrentMonth() {
+        AppUser user = users.save(new AppUser(UUID.randomUUID(), "test|salary-no-upcoming",
+            "salary-no-upcoming@test.invalid", "Europe/Madrid", Instant.EPOCH));
+        salaryProfileRepository.save(new SalaryProfile(
+                user, LocalDate.of(2026, 9, 1), null, new BigDecimal("1300.00"),
+                "EUR", 12, Instant.parse("2026-09-01T00:00:00Z")));
+
+        assertThat(salaryProfileRepository
+                .findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(user.getId(), LocalDate.of(2026, 9, 1)))
+                .isEmpty();
+    }
 }

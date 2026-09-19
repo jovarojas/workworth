@@ -7,7 +7,8 @@ import {
   CurrentSalaryProfileResponse,
   EstimatorStatusResponse,
   MonthlySalaryRateResponse,
-  SalaryProfileResponse
+  SalaryProfileResponse,
+  UpcomingSalaryProfileResponse
 } from '../models/workworth-api.models';
 
 @Injectable({ providedIn: 'root' })
@@ -22,6 +23,10 @@ export class SalaryApiService {
 
   create(request: CreateSalaryProfileRequest): Observable<SalaryProfileResponse> {
     return this.http.post<SalaryProfileResponse>(`${this.apiBaseUrl}/salary-profiles`, request);
+  }
+
+  upcoming(): Observable<UpcomingSalaryProfileResponse> {
+    return this.http.get<UpcomingSalaryProfileResponse>(`${this.apiBaseUrl}/salary-profiles/upcoming`);
   }
 
   rate(month: string): Observable<MonthlySalaryRateResponse> {

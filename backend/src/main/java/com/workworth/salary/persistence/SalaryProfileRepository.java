@@ -17,4 +17,10 @@ public interface SalaryProfileRepository extends JpaRepository<SalaryProfile, Lo
     Page<SalaryProfile> findAllByUserIdOrderByEffectiveFromDesc(UUID userId, Pageable pageable);
 
     long countByUserId(UUID userId);
+
+    // The next salary basis that has not become effective yet -- i.e. a change already scheduled
+    // for a future month. Ordered ascending so the earliest upcoming one wins if, for whatever
+    // reason, more than one future profile exists.
+    Optional<SalaryProfile> findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(
+        UUID userId, LocalDate effectiveFrom);
 }

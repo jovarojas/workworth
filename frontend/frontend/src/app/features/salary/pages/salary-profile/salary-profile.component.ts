@@ -71,6 +71,13 @@ export class SalaryProfileComponent implements OnInit {
   readonly fieldErrors = signal<Record<string, string>>({});
   readonly submitted = signal(false);
 
+  readonly upcomingProfile = signal<SalaryProfileResponse | null>(null);
+  readonly loadingUpcoming = signal(true);
+  readonly upcomingError = signal<string | null>(null);
+
+  readonly showChangeForm = signal(false);
+  private formMode: 'setup' | 'change' = 'setup';
+
   readonly estimatorNotImplemented = computed(() => this.estimator()?.status === 'NOT_IMPLEMENTED');
 
   readonly form = new FormGroup({
@@ -95,6 +102,42 @@ export class SalaryProfileComponent implements OnInit {
     this.loadApplicationCurrency();
     this.loadCurrentProfile();
     this.loadEstimatorStatus();
+    this.loadUpcomingProfile();
+  }
+
+  loadUpcomingProfile(): void {
+    this.loadingUpcoming.set(true);
+    this.upcomingError.set(null);
+
+    this.salaries.upcoming()
+      .pipe(finalize(() => this.loadingUpcoming.set(false)))
+      .subscribe({
+        next: (upcoming) => this.upcomingProfile.set(upcoming.salaryProfile),
+        error: (error: unknown) => this.upcomingError.set(
+          this.errorDetail(error, 'No se ha podido comprobar si hay un cambio de salario programado.')
+        )
+      });
+  }
+
+  openChangeForm(): void {
+    this.formMode = 'change';
+    this.submitted.set(false);
+    this.submitError.set(null);
+    this.fieldErrors.set({});
+    this.form.controls.netMonthlyReal.setValue('');
+    this.form.controls.effectiveFrom.setValue(this.nextMonthFirstDay());
+    this.form.controls.effectiveFrom.disable({ emitEvent: false });
+    this.showChangeForm.set(true);
+  }
+
+  closeChangeForm(): void {
+    this.showChangeForm.set(false);
+    this.formMode = 'setup';
+    this.submitted.set(false);
+    this.submitError.set(null);
+    this.fieldErrors.set({});
+    this.form.controls.effectiveFrom.enable({ emitEvent: false });
+    this.form.controls.effectiveFrom.setValue(this.currentMonthFirstDay());
   }
 
   loadCurrentProfile(): void {
@@ -164,6 +207,7 @@ export class SalaryProfileComponent implements OnInit {
     }
 
     const value = this.form.getRawValue();
+    const mode = this.formMode;
     this.saving.set(true);
     this.salaries.create({
       effectiveFrom: value.effectiveFrom,
@@ -174,13 +218,26 @@ export class SalaryProfileComponent implements OnInit {
       .pipe(finalize(() => this.saving.set(false)))
       .subscribe({
         next: (profile) => {
-          this.profileMissing.set(false);
-          this.profile.set(profile);
-          this.profileMonth.set(profile.effectiveFrom.slice(0, 7));
-          this.loadRate(profile.effectiveFrom.slice(0, 7));
+          if (mode === 'change') {
+            this.handleChangeScheduled(profile);
+          } else {
+            this.handleProfileSaved(profile);
+          }
         },
         error: (error: unknown) => this.handleSubmissionError(error)
       });
+  }
+
+  private handleProfileSaved(profile: SalaryProfileResponse): void {
+    this.profileMissing.set(false);
+    this.profile.set(profile);
+    this.profileMonth.set(profile.effectiveFrom.slice(0, 7));
+    this.loadRate(profile.effectiveFrom.slice(0, 7));
+  }
+
+  private handleChangeScheduled(profile: SalaryProfileResponse): void {
+    this.upcomingProfile.set(profile);
+    this.closeChangeForm();
   }
 
   controlError(controlName: 'effectiveFrom' | 'netMonthlyReal' | 'currencyCode' | 'payPeriods'): string | null {
@@ -257,6 +314,14 @@ export class SalaryProfileComponent implements OnInit {
     const current = new Date();
     const year = current.getFullYear();
     const month = String(current.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  }
+
+  private nextMonthFirstDay(): string {
+    const current = new Date();
+    const next = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+    const year = next.getFullYear();
+    const month = String(next.getMonth() + 1).padStart(2, '0');
     return `${year}-${month}-01`;
   }
 }

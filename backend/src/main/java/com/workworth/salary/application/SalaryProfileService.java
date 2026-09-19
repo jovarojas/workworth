@@ -8,6 +8,7 @@ import com.workworth.preferences.application.ApplicationCurrencyService;
 import com.workworth.salary.api.dto.CreateSalaryProfileRequest;
 import com.workworth.salary.api.dto.SalaryProfileHistoryResponse;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
+import com.workworth.salary.api.dto.UpcomingSalaryProfileResponse;
 import com.workworth.salary.exception.SalaryProfileConflictException;
 import com.workworth.salary.exception.SalaryProfileNotFoundException;
 import com.workworth.salary.persistence.SalaryProfile;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -88,6 +90,20 @@ public class SalaryProfileService {
         return salaryProfileRepository.findTopByUserIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(user.getId(), month.atDay(1))
             .orElseThrow(() -> new SalaryProfileNotFoundException(
                 "No salary profile is effective for " + month + "."));
+    }
+
+    // A salary basis already saved for a future month -- i.e. a change the user has scheduled
+    // that has not started applying yet. findEffectiveProfile()/getCurrent() deliberately never
+    // return this: they answer "what basis is active for month X", and a not-yet-effective basis
+    // is never active for any month up to and including the current one.
+    public UpcomingSalaryProfileResponse getUpcoming() {
+        AppUser user = currentUser.currentUser();
+        YearMonth currentMonth = YearMonth.now(clock.withZone(ZoneId.of(user.getTimeZone())));
+        SalaryProfileResponse upcoming = salaryProfileRepository
+            .findFirstByUserIdAndEffectiveFromGreaterThanOrderByEffectiveFromAsc(user.getId(), currentMonth.atDay(1))
+            .map(salaryProfileMapper::toResponse)
+            .orElse(null);
+        return new UpcomingSalaryProfileResponse(upcoming);
     }
 
     public SalaryProfileHistoryResponse getHistory(int page, int size) {
