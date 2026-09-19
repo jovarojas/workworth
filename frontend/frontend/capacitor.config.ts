@@ -5,7 +5,8 @@ const config: CapacitorConfig = {
   appName: 'WorkWorth',
   webDir: 'dist/frontend/browser',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    url: 'https://workworth-8ea.pages.dev'
   },
   android: {
     allowMixedContent: process.env.WORKWORTH_ANDROID_ALLOW_MIXED_CONTENT === 'true'
