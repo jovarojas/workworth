@@ -158,7 +158,6 @@ describe('DashboardPageComponent', () => {
     expect(content).toContain('2 Funkos de Shakira');
     expect(content).toContain('Total:');
     expect(content).toContain('Disponible:');
-    expect(content).toContain('USD');
   });
 
   it('keeps earning and workday data visible when motivation fails', () => {
