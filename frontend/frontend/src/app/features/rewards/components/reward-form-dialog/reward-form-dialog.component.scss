@@ -1,0 +1,29 @@
+:host {
+  display: block;
+}
+
+.reward-form-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: 1.5rem 1.5rem 0;
+
+  h2 {
+    margin: 0;
+  }
+
+  button {
+    margin-top: -.25rem;
+  }
+}
+
+.reward-form-dialog__detail {
+  margin: -.5rem 0 1rem;
+  color: #56627a;
+}
+
+.feedback--error {
+  color: #b42318;
+  margin: .5rem 0 0;
+}

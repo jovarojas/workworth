@@ -1,44 +1,45 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { finalize, Observable } from 'rxjs';
 import { problemDetailMessage } from '../../../../core/http/problem-detail';
 import { earningPeriodContextLabel, rewardStatusLabel } from '../../../../core/presentation/display-labels';
 import {
-  CreateRewardRequest,
   RewardCombinationResponse,
   RewardRelevanceResponse,
   RewardResponse
 } from '../../../../core/models/workworth-api.models';
 import { RewardsApiService } from '../../../../core/services/rewards-api.service';
-import { RewardFormComponent } from '../../components/reward-form/reward-form.component';
+import { RewardFormDialogComponent } from '../../components/reward-form-dialog/reward-form-dialog.component';
 
 @Component({
   selector: 'app-rewards-page',
   imports: [
     CommonModule,
     CurrencyPipe,
+    DragDropModule,
     MatButtonModule,
     MatCardModule,
+    MatDialogModule,
     MatIconModule,
-    MatProgressSpinnerModule,
-    RewardFormComponent
+    MatProgressSpinnerModule
   ],
   templateUrl: './rewards-page.component.html',
   styleUrl: './rewards-page.component.scss'
 })
 export class RewardsPageComponent implements OnInit {
   private readonly rewards = inject(RewardsApiService);
+  private readonly dialog = inject(MatDialog);
   private pendingRequestGeneration = 0;
   private acquiredRequestGeneration = 0;
   private relevanceRequestGeneration = 0;
   private combinationRequestGeneration = 0;
-
-  @ViewChild(RewardFormComponent) private rewardForm?: RewardFormComponent;
 
   readonly pending = signal<RewardResponse[]>([]);
   readonly acquired = signal<RewardResponse[]>([]);
@@ -57,10 +58,8 @@ export class RewardsPageComponent implements OnInit {
   readonly acquiredError = signal<string | null>(null);
   readonly actionError = signal<string | null>(null);
   readonly actionSuccess = signal<string | null>(null);
-  readonly editingReward = signal<RewardResponse | null>(null);
   readonly activeAction = signal<string | null>(null);
 
-  readonly formSaving = computed(() => this.activeAction() === 'form');
   readonly recentlyReached = computed(() => this.pending().filter((reward) =>
     this.relevanceByRewardId()[reward.id]?.newlyReached
   ));
@@ -188,39 +187,50 @@ export class RewardsPageComponent implements OnInit {
       });
   }
 
-  saveReward(request: CreateRewardRequest): void {
-    if (this.formSaving()) {
-      return;
-    }
-
-    this.activeAction.set('form');
-    this.actionError.set(null);
-    this.actionSuccess.set(null);
-    const editing = this.editingReward();
-    const action = editing ? this.rewards.update(editing.id, request) : this.rewards.create(request);
-
-    action.pipe(finalize(() => this.activeAction.set(null))).subscribe({
-      next: () => {
-        this.actionSuccess.set(editing ? 'Recompensa actualizada.' : 'Recompensa añadida.');
-        this.editingReward.set(null);
-        this.rewardForm?.reset();
-        this.refreshRewards();
-      },
-      error: (error: unknown) => this.actionError.set(this.errorMessage(
-        error, editing ? 'No se ha podido actualizar la recompensa.' : 'No se ha podido añadir la recompensa.'
-      ))
-    });
+  openCreateDialog(): void {
+    this.openRewardDialog(null);
   }
 
   edit(reward: RewardResponse): void {
-    this.actionError.set(null);
-    this.actionSuccess.set(null);
-    this.editingReward.set(reward);
+    this.openRewardDialog(reward);
   }
 
-  cancelEdit(): void {
-    this.editingReward.set(null);
-    this.rewardForm?.reset();
+  dropPending(event: CdkDragDrop<RewardResponse[]>): void {
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+
+    const previousOrder = this.pending();
+    const reordered = [...previousOrder];
+    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+    this.pending.set(reordered);
+    this.actionError.set(null);
+
+    this.rewards.reorder(reordered.map((reward) => reward.id)).subscribe({
+      error: (error: unknown) => {
+        // Roll back the optimistic reorder: the user's chosen priority never actually saved.
+        this.pending.set(previousOrder);
+        this.actionError.set(this.errorMessage(error, 'No se ha podido guardar el nuevo orden. Inténtalo de nuevo.'));
+      }
+    });
+  }
+
+  private openRewardDialog(reward: RewardResponse | null): void {
+    this.actionError.set(null);
+    this.actionSuccess.set(null);
+    const dialogRef = this.dialog.open(RewardFormDialogComponent, {
+      data: { reward },
+      width: 'min(30rem, 92vw)',
+      autoFocus: 'dialog'
+    });
+
+    dialogRef.afterClosed().subscribe((saved) => {
+      if (!saved) {
+        return;
+      }
+      this.actionSuccess.set(reward ? 'Recompensa actualizada.' : 'Recompensa añadida.');
+      this.refreshRewards();
+    });
   }
 
   confirmDelete(reward: RewardResponse): void {
@@ -342,9 +352,6 @@ export class RewardsPageComponent implements OnInit {
     action.pipe(finalize(() => this.activeAction.set(null))).subscribe({
       next: () => {
         this.actionSuccess.set(success);
-        if (this.editingReward()?.id === id) {
-          this.cancelEdit();
-        }
         this.refreshRewards();
       },
       error: (error: unknown) => this.actionError.set(this.errorMessage(error, failure))

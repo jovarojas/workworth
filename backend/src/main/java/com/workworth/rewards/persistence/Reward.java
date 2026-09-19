@@ -58,6 +58,12 @@ public class Reward {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    // Manual, visual priority chosen by the user (e.g. via drag and drop), independent of id/
+    // creation order. Lower values are listed first. Defaults to 0 here; RewardService.create()
+    // assigns the real next value (current max + 1) before the first save.
+    @Column(name = "display_order", nullable = false)
+    private long displayOrder;
+
     protected Reward() {
     }
 
@@ -76,6 +82,11 @@ public class Reward {
         this.name = name;
         this.quantity = quantity;
         this.price = price;
+        this.updatedAt = updatedAt;
+    }
+
+    public void reorder(long displayOrder, Instant updatedAt) {
+        this.displayOrder = displayOrder;
         this.updatedAt = updatedAt;
     }
 

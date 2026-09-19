@@ -65,4 +65,13 @@ public class SalaryProfile {
         this.updatedAt = createdAt;
     }
 
+    // Only used to edit an already-scheduled, not-yet-effective salary change (see
+    // SalaryProfileService#updateUpcoming): a profile that is already effective, or already in
+    // the past, is never mutated in place -- SPEC 001 always models a salary change as a new
+    // profile so historical snapshots stay untouched.
+    public void updateNetMonthlyReal(BigDecimal netMonthlyReal, Instant updatedAt) {
+        this.netMonthlyReal = netMonthlyReal;
+        this.updatedAt = updatedAt;
+    }
+
 }

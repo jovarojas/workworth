@@ -6,6 +6,8 @@ import com.workworth.salary.api.dto.EstimatorStatusResponse;
 import com.workworth.salary.api.dto.MonthlySalaryRateResponse;
 import com.workworth.salary.api.dto.SalaryProfileHistoryResponse;
 import com.workworth.salary.api.dto.SalaryProfileResponse;
+import com.workworth.salary.api.dto.UpcomingSalaryProfileResponse;
+import com.workworth.salary.api.dto.UpdateUpcomingSalaryProfileRequest;
 import com.workworth.salary.application.MonthlySalaryRateService;
 import com.workworth.salary.application.SalaryProfileService;
 import com.workworth.salary.domain.EstimatorStatus;
@@ -22,9 +24,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -59,6 +63,22 @@ public class SalaryProfileController {
         return ResponseEntity.ok(new CurrentSalaryProfileResponse(
             requestedMonth,
             salaryProfileService.getCurrent(requestedMonth)));
+    }
+
+    @GetMapping("/salary-profiles/upcoming")
+    public ResponseEntity<UpcomingSalaryProfileResponse> getUpcoming() {
+        return ResponseEntity.ok(salaryProfileService.getUpcoming());
+    }
+
+    @PutMapping("/salary-profiles/upcoming")
+    public ResponseEntity<SalaryProfileResponse> updateUpcoming(@Valid @RequestBody UpdateUpcomingSalaryProfileRequest request) {
+        return ResponseEntity.ok(salaryProfileService.updateUpcoming(request));
+    }
+
+    @DeleteMapping("/salary-profiles/upcoming")
+    public ResponseEntity<Void> cancelUpcoming() {
+        salaryProfileService.cancelUpcoming();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/salary-profiles")

@@ -1,9 +1,22 @@
 <main class="rewards-page">
   <header class="rewards-page__header">
-    <p class="eyebrow">RECOMPENSAS</p>
-    <h1>Tus próximas recompensas</h1>
-    <p>Guarda las cosas que quieres conseguir con lo que registras en WorkWorth.</p>
+    <div>
+      <p class="eyebrow">RECOMPENSAS</p>
+      <h1>Tus próximas recompensas</h1>
+      <p>Guarda las cosas que quieres conseguir con lo que registras en WorkWorth.</p>
+    </div>
+    <button mat-flat-button type="button" (click)="openCreateDialog()">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      Nueva recompensa
+    </button>
   </header>
+
+  @if (actionError(); as errorMessage) {
+    <div class="feedback feedback--error" role="alert"><p>{{ errorMessage }}</p></div>
+  }
+  @if (actionSuccess(); as successMessage) {
+    <p class="feedback feedback--success" role="status">{{ successMessage }}</p>
+  }
 
   @if (recentlyReached().length > 0) {
     <section class="reward-section reward-section--recent" aria-labelledby="recent-heading" aria-live="polite">
@@ -87,12 +100,20 @@
     @if (!pendingLoading() && !pendingError() && pending().length === 0) {
       <div class="empty" aria-live="polite"><mat-icon aria-hidden="true">redeem</mat-icon><p>Aún no tienes recompensas pendientes.</p></div>
     }
+    @if (pending().length > 1) {
+      <p class="reward-section__hint">Arrastra una recompensa desde <mat-icon aria-hidden="true">drag_indicator</mat-icon> para cambiar cuál te interesa conseguir antes.</p>
+    }
     @if (pending().length > 0) {
-      <div class="reward-grid" aria-label="Recompensas pendientes">
+      <div class="reward-grid" aria-label="Recompensas pendientes" cdkDropList (cdkDropListDropped)="dropPending($event)">
         @for (reward of pending(); track reward.id) {
-          <mat-card class="reward-card">
+          <mat-card class="reward-card" cdkDrag [cdkDragDisabled]="pending().length < 2">
             <mat-card-content>
               <div class="reward-card__heading">
+                @if (pending().length > 1) {
+                  <button mat-icon-button type="button" class="reward-card__drag-handle" cdkDragHandle aria-label="Arrastrar para reordenar">
+                    <mat-icon aria-hidden="true">drag_indicator</mat-icon>
+                  </button>
+                }
                 <h3>{{ rewardLabel(reward) }}</h3>
                 <span>{{ rewardStatusLabel(reward.status) }}</span>
               </div>
@@ -154,24 +175,4 @@
     }
   </section>
 
-  <section class="reward-section reward-form-section" aria-labelledby="reward-form-heading">
-    <mat-card>
-      <mat-card-content>
-        <p class="eyebrow">{{ editingReward() ? 'EDITAR RECOMPENSA' : 'NUEVA RECOMPENSA' }}</p>
-        <h2 id="reward-form-heading">{{ editingReward() ? 'Actualiza tu recompensa' : 'Añade algo que te ilusione' }}</h2>
-        <p class="reward-form-section__detail">El precio es el total de la recompensa completa.</p>
-        <app-reward-form
-          [reward]="editingReward()"
-          [saving]="formSaving()"
-          (submitted)="saveReward($event)"
-          (cancelled)="cancelEdit()"></app-reward-form>
-        @if (actionError(); as errorMessage) {
-          <p class="feedback feedback--error" role="alert">{{ errorMessage }}</p>
-        }
-        @if (actionSuccess(); as successMessage) {
-          <p class="feedback feedback--success" aria-live="polite">{{ successMessage }}</p>
-        }
-      </mat-card-content>
-    </mat-card>
-  </section>
 </main>

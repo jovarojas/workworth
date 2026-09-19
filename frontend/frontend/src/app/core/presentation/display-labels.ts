@@ -85,7 +85,8 @@ export function earningUnavailableReasonLabel(reason: string | null): string | n
   return {
     SALARY_PROFILE_NOT_FOUND: 'No hay un perfil salarial disponible.',
     SALARY_CONFIGURATION_INCOMPLETE: 'La configuración salarial está incompleta.',
-    SALARY_RATE_UNAVAILABLE: 'No se puede calcular la tarifa salarial.'
+    SALARY_RATE_UNAVAILABLE: 'No se puede calcular la tarifa salarial.',
+    NOT_A_WORKDAY: 'Hoy no es un día laborable.'
   }[reason] ?? 'No se puede calcular esta ganancia con la información disponible.';
 }
 

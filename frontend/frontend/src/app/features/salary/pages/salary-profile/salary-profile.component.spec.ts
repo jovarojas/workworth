@@ -10,7 +10,8 @@ describe('SalaryProfileComponent', () => {
     current: vi.fn(),
     create: vi.fn(),
     rate: vi.fn(),
-    estimatorStatus: vi.fn()
+    estimatorStatus: vi.fn(),
+    upcoming: vi.fn()
   };
   const preferences = {
     currency: vi.fn()
@@ -20,6 +21,7 @@ describe('SalaryProfileComponent', () => {
     Object.values(salaries).forEach((method) => method.mockReset());
     preferences.currency.mockReset();
     salaries.estimatorStatus.mockReturnValue(of(estimator()));
+    salaries.upcoming.mockReturnValue(of({ salaryProfile: null }));
     preferences.currency.mockReturnValue(of(currency()));
 
     await TestBed.configureTestingModule({

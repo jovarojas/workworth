@@ -7,26 +7,38 @@
 }
 
 .rewards-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 2rem;
 
   h1 { margin: .25rem 0 .5rem; font-size: clamp(2rem, 5vw, 3.25rem); letter-spacing: -.05em; }
   p:last-child { max-width: 38rem; margin: 0; color: #56627a; }
+  button { flex: 0 0 auto; white-space: nowrap; }
+  button mat-icon { margin-right: .25rem; vertical-align: middle; }
 }
 
 .eyebrow { margin: 0; color: #56627a; font-size: .75rem; font-weight: 700; letter-spacing: .12em; }
 
-.reward-form-section mat-card,
 .reward-card {
   border: 1px solid #e1e5ee;
   border-radius: 1rem;
   box-shadow: none;
 }
 
-.reward-form-section h2 { margin: .3rem 0 .5rem; color: #172033; }
-.reward-form-section__detail { margin: 0 0 1.25rem; color: #56627a; }
-
 .reward-section { margin-top: 2.5rem; }
 .reward-section--recent { margin-top: 0; }
+.reward-section__hint {
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  margin: 1rem 0 0;
+  color: #56627a;
+  font-size: .85rem;
+
+  mat-icon { font-size: 1.1rem; width: 1.1rem; height: 1.1rem; }
+}
 
 .reward-section__header,
 .reward-card__heading,
@@ -52,6 +64,24 @@
 .reward-card small { color: #697586; }
 .reward-card__actions { flex-wrap: wrap; justify-content: flex-start; margin-top: 1.5rem; }
 .reward-card--acquired { background: #f8fafc; }
+
+.reward-card__drag-handle {
+  cursor: grab;
+  color: #97a3b8;
+  margin: -.5rem 0 -.5rem -.5rem;
+
+  &:active { cursor: grabbing; }
+}
+
+.reward-card__heading { justify-content: flex-start; }
+.reward-card__heading h3 { flex: 1 1 auto; }
+
+.reward-grid.cdk-drop-list .reward-card.cdk-drag { transition: transform 150ms cubic-bezier(0, 0, .2, 1); }
+.reward-card.cdk-drag-preview {
+  box-shadow: 0 8px 24px rgba(23, 32, 51, .18);
+  border-radius: 1rem;
+}
+.reward-card.cdk-drag-placeholder { opacity: .3; }
 .reward-card--recent,
 .combination-card { border: 1px solid #cfd8ff; border-radius: 1rem; box-shadow: none; background: #f7f8ff; }
 .reward-card__relevance { margin: 1rem 0 0; color: #384860; }
@@ -78,6 +108,8 @@
 .feedback--success { color: #067647; }
 
 @media (max-width: 620px) {
+  .rewards-page__header { flex-direction: column; }
+  .rewards-page__header button { width: 100%; }
   .reward-grid { grid-template-columns: 1fr; }
   .reward-section__header { align-items: flex-start; flex-direction: column; }
   .reward-section__header button { width: 100%; }

@@ -19,10 +19,15 @@
       </div>
     } @else if (projection(); as currentProjection) {
       @if (isUnavailable() || !currentProjection.currencyCode) {
-        <h2 id="today-earning">No disponible</h2>
-        <p class="hero__detail">
-          {{ unavailableReasonLabel(currentProjection.unavailableReason) || 'No hay una moneda disponible para la ganancia de hoy.' }}
-        </p>
+        @if (currentProjection.unavailableReason === 'NOT_A_WORKDAY') {
+          <h2 id="today-earning">Hoy no es un día laborable</h2>
+          <p class="hero__detail">No hay jornada programada para hoy, así que no hay ninguna ganancia que calcular.</p>
+        } @else {
+          <h2 id="today-earning">No disponible</h2>
+          <p class="hero__detail">
+            {{ unavailableReasonLabel(currentProjection.unavailableReason) || 'No hay una moneda disponible para la ganancia de hoy.' }}
+          </p>
+        }
       } @else {
         <h2 id="today-earning">
           {{ currentProjection.amount | currency:currentProjection.currencyCode:'symbol':'1.2-2' }} {{ currentProjection.currencyCode }}

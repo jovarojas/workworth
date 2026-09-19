@@ -4,6 +4,7 @@ import com.workworth.earnings.domain.*;
 import com.workworth.salary.application.MonthlySalaryRateService;
 import com.workworth.salary.exception.*;
 import com.workworth.workday.application.WorkdayService;
+import com.workworth.workday.domain.WorkdaySchedule;
 import com.workworth.identity.application.CurrentUserProvider;
 
 import java.math.*;
@@ -29,6 +30,12 @@ public class ActiveEarningProjectionService {
     public EarningProjection current() {
         var user = currentUser.currentUser();
         LocalDate date = LocalDate.now(clock.withZone(java.time.ZoneId.of(user.getTimeZone())));
+        // A date with no standard workday (e.g. a weekend) has nothing to reconcile: calling
+        // reconcile() for it would throw WorkdayNotFoundException, which is a real domain
+        // rule -- not an error -- and must not surface as a projection failure to the caller.
+        if (WorkdaySchedule.forDate(date).isEmpty()) {
+            return unavailable(date, 0, EarningUnavailableReason.NOT_A_WORKDAY);
+        }
         var day = workdays.reconcile(date);
         long seconds = workdays.time(day);
         try {
