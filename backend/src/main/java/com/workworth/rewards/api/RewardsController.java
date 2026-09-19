@@ -6,6 +6,7 @@ import com.workworth.rewards.api.dto.RewardCombinationResponse;
 import com.workworth.rewards.api.dto.RewardCombinationRelevanceResponse;
 import com.workworth.rewards.api.dto.RewardEvaluationResponse;
 import com.workworth.rewards.api.dto.RewardRelevanceResponse;
+import com.workworth.rewards.api.dto.ReorderRewardsRequest;
 import com.workworth.rewards.api.dto.RewardResponse;
 import com.workworth.rewards.api.dto.UpdateRewardRequest;
 import com.workworth.rewards.application.RewardCombinationService;
@@ -52,6 +53,11 @@ public class RewardsController {
     @GetMapping
     public ResponseEntity<List<RewardResponse>> list(@RequestParam(required = false) RewardStatus status) {
         return ResponseEntity.ok(rewards.list(status).stream().map(RewardResponse::from).toList());
+    }
+
+    @PutMapping("/order")
+    public ResponseEntity<List<RewardResponse>> reorder(@Valid @RequestBody ReorderRewardsRequest request) {
+        return ResponseEntity.ok(rewards.reorder(request.orderedIds()).stream().map(RewardResponse::from).toList());
     }
 
     @GetMapping("/{id}")

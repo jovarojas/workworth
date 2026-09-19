@@ -35,6 +35,10 @@ export class RewardsApiService {
     return this.http.put<RewardResponse>(`${this.apiBaseUrl}/rewards/${id}`, request);
   }
 
+  reorder(orderedIds: number[]): Observable<RewardResponse[]> {
+    return this.http.put<RewardResponse[]>(`${this.apiBaseUrl}/rewards/order`, { orderedIds });
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiBaseUrl}/rewards/${id}`);
   }

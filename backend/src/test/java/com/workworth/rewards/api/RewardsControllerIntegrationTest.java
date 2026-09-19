@@ -127,6 +127,44 @@ class RewardsControllerIntegrationTest {
     }
 
     @Test
+    void reordersPendingRewardsAndPersistsTheNewPriorityAcrossRequests() throws Exception {
+        long first = createRewardAndReturnId("Cafe", 1, "3.00");
+        long second = createRewardAndReturnId("Cine", 1, "12.00");
+        long third = createRewardAndReturnId("Escapada", 1, "300.00");
+
+        mockMvc.perform(get("/api/v1/rewards?status=PENDING"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(first))
+            .andExpect(jsonPath("$[1].id").value(second))
+            .andExpect(jsonPath("$[2].id").value(third));
+
+        mockMvc.perform(put("/api/v1/rewards/order")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderedIds\":[%d,%d,%d]}".formatted(third, first, second)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(third))
+            .andExpect(jsonPath("$[1].id").value(first))
+            .andExpect(jsonPath("$[2].id").value(second));
+
+        mockMvc.perform(get("/api/v1/rewards?status=PENDING"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(third))
+            .andExpect(jsonPath("$[1].id").value(first))
+            .andExpect(jsonPath("$[2].id").value(second));
+    }
+
+    @Test
+    void rejectsReorderingARewardIdThatDoesNotExist() throws Exception {
+        long onlyReward = createRewardAndReturnId("Auriculares", 1, "40.00");
+
+        mockMvc.perform(put("/api/v1/rewards/order")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"orderedIds\":[%d,999999]}".formatted(onlyReward)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
     void validatesRewardInputWithTheExistingProblemDetailContract() throws Exception {
         mockMvc.perform(post("/api/v1/rewards")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -229,6 +267,15 @@ class RewardsControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"%s\",\"quantity\":%d,\"price\":%s}".formatted(name, quantity, price)))
             .andExpect(status().isCreated());
+    }
+
+    private long createRewardAndReturnId(String name, int quantity, String price) throws Exception {
+        var response = mockMvc.perform(post("/api/v1/rewards")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"%s\",\"quantity\":%d,\"price\":%s}".formatted(name, quantity, price)))
+            .andExpect(status().isCreated())
+            .andReturn();
+        return objectMapper.readTree(response.getResponse().getContentAsString()).get("id").asLong();
     }
 
     private void insertEarning(EarningStatus status, BigDecimal amount) {
