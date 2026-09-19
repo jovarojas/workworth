@@ -84,7 +84,7 @@ class UserOwnershipIsolationIntegrationTest {
         assertThat(workdays.findByUserIdAndLocalDate(second.getId(), DATE)).contains(secondDay);
         assertThat(salaries.findAllByUserIdOrderByEffectiveFromDesc(first.getId(), org.springframework.data.domain.PageRequest.of(0, 10))
             .getContent()).hasSize(1).allMatch(profile -> profile.getUser().getId().equals(first.getId()));
-        assertThat(rewards.findAllByUserIdAndStatusOrderByIdAsc(first.getId(), RewardStatus.PENDING))
+        assertThat(rewards.findAllByUserIdAndStatusOrderByDisplayOrderAscIdAsc(first.getId(), RewardStatus.PENDING))
             .extracting(Reward::getId).containsExactly(firstReward.getId());
         assertThat(goals.findAllByUserIdAndStatusOrderByIdAsc(first.getId(), GoalStatus.ACTIVE))
             .extracting(Goal::getId).containsExactly(firstGoal.getId());
